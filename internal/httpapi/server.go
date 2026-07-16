@@ -73,6 +73,7 @@ func NewWithControlLauncherAndAdvisor(
 	mux.HandleFunc("POST /ui/advisor/run", server.advisorRun)
 	mux.HandleFunc("GET /ui/memories/{memoryID}", server.dashboardDetail)
 	mux.HandleFunc("POST /ui/memories/{memoryID}/review", server.dashboardReview)
+	mux.HandleFunc("POST /ui/memories/review-batch", server.dashboardReviewBatch)
 	mux.HandleFunc("GET /v1/health", server.health)
 	mux.Handle("GET /v1/capabilities", server.authenticated(http.HandlerFunc(server.capabilities)))
 	mux.Handle("POST /v1/memories", server.authenticated(http.HandlerFunc(server.remember)))

@@ -40,6 +40,8 @@ type dashboardView struct {
 	AgentSettings       []dashboardAgentSettings
 	AgentSettingsErr    string
 	AgentSettingsNotice string
+	CanBulkReview       bool
+	BatchNotice         string
 }
 
 type dashboardFilters struct {
@@ -102,6 +104,7 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		Canonical: counts[cortex.LifecycleCanonical],
 		Memories:  make([]dashboardMemory, 0, len(browsed.Memories)),
 		Filters:   filters, Matched: browsed.Total,
+		CanBulkReview: server.hub.CanGovern(session.AgentID) && counts[cortex.LifecycleCandidate] > 0,
 	}
 	for _, count := range counts {
 		view.Total += count
@@ -120,6 +123,9 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 	}
 	if request.URL.Query().Get("agents") == "saved" {
 		view.AgentSettingsNotice = "บันทึกการเรียนรู้ของเอเจนต์แล้ว เริ่มใช้ใน session ถัดไป"
+	}
+	if request.URL.Query().Get("batch") == "reviewed" {
+		view.BatchNotice = "จัดการรายการที่เลือกแล้ว ถ้ามีรายการใดผิด ระบบจะไม่เปลี่ยนทั้งชุด"
 	}
 	curatorStatus, curatorErr := server.hub.CuratorStatus(request.Context(), session.AgentID)
 	if curatorErr == nil {

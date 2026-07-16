@@ -301,10 +301,27 @@
       <div class="explorer-actions"><button type="submit">ค้นหา</button><a class="quiet-link" href="/{{if .Advanced}}?view=advanced{{end}}">ล้างตัวกรอง</a></div>
     </form>
 
+    {{if .BatchNotice}}<p class="notice" role="status">{{.BatchNotice}}</p>{{end}}
+    {{if .CanBulkReview}}
+    <form id="bulk-review" method="post" action="/ui/memories/review-batch" class="bulk-review" aria-label="จัดการความรู้หลายรายการ">
+      <input type="hidden" name="csrf" value="{{.CSRFToken}}">
+      <div><strong>จัดการหลายรายการ</strong><span>เลือกเฉพาะรายการที่ตรวจแล้วด้านล่าง</span></div>
+      <label><span>ทำอะไรกับรายการที่เลือก</span><select name="decision">
+        <option value="approve">รับไปใช้งาน</option>
+        <option value="reject">ไม่รับข้อมูล</option>
+        <option value="archive">เก็บเข้าคลัง</option>
+      </select></label>
+      <label><span>เหตุผลร่วม</span><input name="reason" maxlength="500" placeholder="เช่น ตรวจจากแหล่งเดิมแล้ว"></label>
+      <label class="bulk-confirm"><input type="checkbox" name="confirm" value="yes" required> ยืนยันเฉพาะรายการที่เลือก</label>
+      <button type="submit">จัดการรายการที่เลือก</button>
+    </form>
+    {{end}}
+
     <section class="memory-list" aria-label="รายการความรู้">
       {{range .Memories}}
       <article class="memory-card">
         <div class="memory-meta">
+          {{if and $.CanBulkReview .CanApprove}}<label class="bulk-select"><input form="bulk-review" type="checkbox" name="memory_id" value="{{.ID}}"> เลือกรายการนี้</label>{{end}}
           <span class="status status-{{.Lifecycle}}">{{.LifecycleLabel}}</span>
           <span>{{.KindLabel}}</span><span>{{.AppliesTo}}</span>
         </div>
