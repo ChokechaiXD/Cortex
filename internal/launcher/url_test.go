@@ -1,6 +1,9 @@
 package launcher
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateDashboardURLAllowsOnlyLoopbackRoot(t *testing.T) {
 	t.Parallel()
@@ -9,6 +12,7 @@ func TestValidateDashboardURLAllowsOnlyLoopbackRoot(t *testing.T) {
 		"http://127.0.0.1:7777/",
 		"http://localhost:7777/",
 		"http://[::1]:7777/",
+		"http://127.0.0.1:7777/ui/session?code=" + strings.Repeat("A", 43),
 	} {
 		if err := validateDashboardURL(valid); err != nil {
 			t.Errorf("validate %q: %v", valid, err)
@@ -20,6 +24,9 @@ func TestValidateDashboardURLAllowsOnlyLoopbackRoot(t *testing.T) {
 		"http://user@127.0.0.1:7777/",
 		"http://127.0.0.1:7777/admin",
 		"http://127.0.0.1:7777/?next=external",
+		"http://127.0.0.1:7777/ui/session",
+		"http://127.0.0.1:7777/ui/session?code=short",
+		"http://127.0.0.1:7777/ui/session?code=" + strings.Repeat("A", 43) + "&next=/admin",
 		"http://127.0.0.1:7777/#fragment",
 	} {
 		if err := validateDashboardURL(invalid); err == nil {
