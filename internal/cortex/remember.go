@@ -16,7 +16,7 @@ func (hub *Hub) Remember(ctx context.Context, cmd RememberCommand) (Memory, erro
 	defer func() { _ = tx.Rollback() }()
 
 	memory, created, err := insertCandidate(ctx, tx, candidateInput{
-		idempotencyKey: cmd.IdempotencyKey,
+		idempotencyKey: scopedRequestKey(cmd.AgentID, cmd.IdempotencyKey),
 		operation:      "remember",
 		kind:           cmd.Kind,
 		scope:          cmd.Scope,

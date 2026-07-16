@@ -18,7 +18,8 @@ func (hub *Hub) Review(ctx context.Context, cmd ReviewCommand) (Memory, error) {
 		return Memory{}, fmt.Errorf("begin review: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if memoryID, found, err := requestResource(ctx, tx, cmd.IdempotencyKey, "review"); err != nil {
+	requestKey := scopedRequestKey(cmd.ActorID, cmd.IdempotencyKey)
+	if memoryID, found, err := requestResource(ctx, tx, requestKey, "review"); err != nil {
 		return Memory{}, fmt.Errorf("check review request: %w", err)
 	} else if found {
 		return getMemory(ctx, tx, memoryID)
@@ -46,7 +47,7 @@ INSERT INTO memory_events(id, memory_id, event_type, actor_id, reason, created_a
 VALUES (?, ?, ?, ?, ?, ?)`, eventID, cmd.MemoryID, eventType, cmd.ActorID, cmd.Reason, now); err != nil {
 		return Memory{}, fmt.Errorf("record review event: %w", err)
 	}
-	if err := recordRequest(ctx, tx, cmd.IdempotencyKey, "review", cmd.MemoryID, now); err != nil {
+	if err := recordRequest(ctx, tx, requestKey, "review", cmd.MemoryID, now); err != nil {
 		return Memory{}, fmt.Errorf("record review request: %w", err)
 	}
 	memory, err = getMemory(ctx, tx, cmd.MemoryID)
@@ -76,6 +77,11 @@ func reviewTransition(current Lifecycle, decision ReviewDecision) (Lifecycle, Ev
 			return "", "", fmt.Errorf("%w: memory cannot be rejected from %s", ErrConflict, current)
 		}
 		return LifecycleRejected, EventRejected, nil
+	case ReviewSupersede:
+		if current == LifecycleSuperseded || current == LifecycleArchived {
+			return "", "", fmt.Errorf("%w: memory cannot be superseded from %s", ErrConflict, current)
+		}
+		return LifecycleSuperseded, EventSuperseded, nil
 	case ReviewArchive:
 		if current == LifecycleArchived {
 			return "", "", fmt.Errorf("%w: memory is already archived", ErrConflict)

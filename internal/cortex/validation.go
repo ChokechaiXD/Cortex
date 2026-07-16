@@ -23,7 +23,7 @@ func validateRemember(cmd RememberCommand) error {
 	if !validKind(cmd.Kind) || !validScope(cmd.Scope) {
 		return fmt.Errorf("%w: unsupported kind or scope", ErrInvalidInput)
 	}
-	if cmd.Scope != ScopeGlobal && strings.TrimSpace(cmd.ScopeKey) == "" {
+	if (cmd.Scope == ScopeProject || cmd.Scope == ScopeDomain) && strings.TrimSpace(cmd.ScopeKey) == "" {
 		return fmt.Errorf("%w: scope_key is required for %s scope", ErrInvalidInput, cmd.Scope)
 	}
 	return nil
@@ -44,7 +44,7 @@ func validateReview(cmd ReviewCommand) error {
 		return fmt.Errorf("%w: idempotency_key, memory_id, and actor_id are required", ErrInvalidInput)
 	}
 	switch cmd.Decision {
-	case ReviewApprove, ReviewPromote, ReviewReject, ReviewArchive:
+	case ReviewApprove, ReviewPromote, ReviewReject, ReviewSupersede, ReviewArchive:
 		return nil
 	default:
 		return fmt.Errorf("%w: unsupported review decision", ErrInvalidInput)

@@ -91,7 +91,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
 );
 `
 
-var schemaMigrations = []string{schemaV1}
+const schemaV2 = `
+CREATE INDEX IF NOT EXISTS memories_stable_key_idx
+ON memories(scope, scope_key, memory_key, created_by);
+`
+
+var schemaMigrations = []string{schemaV1, schemaV2}
 
 func openDatabase(ctx context.Context, path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)

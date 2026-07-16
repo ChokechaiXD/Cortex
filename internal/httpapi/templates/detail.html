@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cortex · {{.Memory.Title}}</title>
+  <link rel="stylesheet" href="/static/cortex.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">MEMORY HISTORY</p><h1>Cortex</h1></div>
+    <a class="back-link" href="/">← Memory control</a>
+  </header>
+  <main>
+    <article class="memory-card detail-card">
+      <div class="memory-meta">
+        <span class="status status-{{.Memory.Lifecycle}}">{{.Memory.Lifecycle}}</span>
+        <span>{{.Memory.Kind}}</span><span>{{.Memory.Scope}}{{if .Memory.ScopeKey}} · {{.Memory.ScopeKey}}{{end}}</span>
+        <span>Revision {{.Memory.Revision}}</span>
+      </div>
+      <h2>{{.Memory.Title}}</h2>
+      <p>{{.Memory.Content}}</p>
+      <dl>
+        <div><dt>Truth</dt><dd>{{printf "%.2f" .Memory.TruthScore}}</dd></div>
+        <div><dt>Utility</dt><dd>{{printf "%.2f" .Memory.UtilityScore}}</dd></div>
+        <div><dt>Created by</dt><dd>{{.Memory.CreatedBy}}</dd></div>
+        <div><dt>Source</dt><dd>{{if .Memory.SourceRef}}{{.Memory.SourceRef}}{{else}}—{{end}}</dd></div>
+      </dl>
+      <form method="post" action="/ui/memories/{{.Memory.ID}}/review" class="review-form">
+        <input type="hidden" name="csrf" value="{{.CSRFToken}}">
+        <input type="hidden" name="return_to" value="/ui/memories/{{.Memory.ID}}">
+        <input name="reason" placeholder="Review reason (optional)" aria-label="Review reason">
+        <div class="actions">
+          {{if .Memory.CanApprove}}<button name="decision" value="approve" type="submit">Approve</button>{{end}}
+          {{if .Memory.CanPromote}}<button name="decision" value="promote" type="submit">Promote</button>{{end}}
+          {{if .Memory.CanReject}}<button class="danger" name="decision" value="reject" type="submit">Reject</button>{{end}}
+          {{if .Memory.CanSupersede}}<button class="quiet" name="decision" value="supersede" type="submit">Supersede</button>{{end}}
+          {{if .Memory.CanArchive}}<button class="quiet" name="decision" value="archive" type="submit">Archive</button>{{end}}
+        </div>
+      </form>
+    </article>
+    <section class="section-head history-head"><div><p class="eyebrow">IMMUTABLE LEDGER</p><h2>Usage and changes</h2></div></section>
+    <ol class="event-list">
+      {{range .Events}}
+      <li>
+        <div><strong>{{.Type}}</strong><span>{{.CreatedAt.Format "2006-01-02 15:04:05Z07:00"}}</span></div>
+        <p>Actor: {{.ActorID}}{{if .SessionID}} · Session: {{.SessionID}}{{end}}{{if .Reason}} · {{.Reason}}{{end}}</p>
+        {{if ne .MetadataJSON "null"}}<code>{{.MetadataJSON}}</code>{{end}}
+      </li>
+      {{else}}<li>No events recorded.</li>{{end}}
+    </ol>
+  </main>
+</body>
+</html>

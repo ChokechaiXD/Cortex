@@ -10,18 +10,20 @@ import (
 )
 
 type Server struct {
-	hub  *cortex.Hub
-	auth Authenticator
+	hub      *cortex.Hub
+	auth     Authenticator
+	sessions *dashboardSessions
 }
 
 func New(hub *cortex.Hub, auth Authenticator) http.Handler {
-	server := &Server{hub: hub, auth: auth}
+	server := &Server{hub: hub, auth: auth, sessions: newDashboardSessions()}
 	mux := http.NewServeMux()
 	staticFiles, _ := fs.Sub(dashboardAssets, "static")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
 	mux.HandleFunc("GET /", server.dashboard)
 	mux.HandleFunc("POST /login", server.login)
 	mux.HandleFunc("POST /logout", server.logout)
+	mux.HandleFunc("GET /ui/memories/{memoryID}", server.dashboardDetail)
 	mux.HandleFunc("POST /ui/memories/{memoryID}/review", server.dashboardReview)
 	mux.HandleFunc("GET /v1/health", server.health)
 	mux.Handle("GET /v1/capabilities", server.authenticated(http.HandlerFunc(server.capabilities)))
@@ -35,7 +37,7 @@ func New(hub *cortex.Hub, auth Authenticator) http.Handler {
 
 func (server *Server) authenticated(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		token := authenticationToken(request)
+		token := bearerToken(request)
 		agentID, ok := server.auth.Authenticate(token)
 		if !ok || strings.TrimSpace(agentID) == "" {
 			writeAPIError(writer, http.StatusUnauthorized, "unauthorized", "valid bearer token required")

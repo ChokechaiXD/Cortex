@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -9,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "provider"))
 
-from client import CortexClient, CortexError  # noqa: E402
+from client import CortexClient, CortexError, write_private_json  # noqa: E402
 
 
 class RecordingHandler(BaseHTTPRequestHandler):
@@ -59,6 +61,16 @@ class CortexClientTest(unittest.TestCase):
         RecordingHandler.response_status = 400
         with self.assertRaisesRegex(CortexError, "rejected"):
             self.client.remember({"content": "bad"})
+
+    def test_private_json_write_is_atomic_and_protected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cortex.json"
+            write_private_json(path, {"token": "first", "agent_id": "sola"})
+            write_private_json(path, {"token": "second", "agent_id": "sola"})
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["token"], "second")
+            self.assertEqual(list(path.parent.glob(".cortex.json.*.tmp")), [])
+            if os.name != "nt":
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":

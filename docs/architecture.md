@@ -59,8 +59,10 @@ than it understands.
 7. Failed attempts remain useful warnings; failure content is not low utility
    by definition.
 8. Mutating operations are idempotent.
-9. Prior content and events are never silently overwritten or deleted.
-10. Legacy databases are imported read-only and remain untouched.
+9. Stable memory keys append revisions; prior content is never overwritten.
+10. Project and domain memory require an exact recall scope.
+11. Browser sessions cannot authenticate HTTP API requests.
+12. Legacy databases are imported read-only and remain untouched.
 
 ## Evolution points
 
@@ -76,4 +78,3 @@ surface area:
 The initial implementation intentionally omits automatic raw-turn mirroring,
 automatic skill mutation, vector databases, and distributed coordination. Add
 them only when measured usage shows the simpler path is insufficient.
-

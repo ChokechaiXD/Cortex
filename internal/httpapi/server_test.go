@@ -104,6 +104,38 @@ func TestHTTPMemoryLifecycle(t *testing.T) {
 	}
 }
 
+func TestIdempotencyKeysAreScopedToAuthenticatedAgent(t *testing.T) {
+	t.Parallel()
+
+	hub, err := cortex.Open(cortex.Config{DatabasePath: filepath.Join(t.TempDir(), "cortex.db")})
+	if err != nil {
+		t.Fatalf("open Cortex: %v", err)
+	}
+	t.Cleanup(func() { _ = hub.Close() })
+	handler := New(hub, StaticAuthenticator{"sola-token": "sola", "nua-token": "nua"})
+	body := map[string]any{
+		"kind": "fact", "scope": "global", "memory_key": "sola-key",
+		"title": "Agent-specific request", "content": "First agent content",
+	}
+	first := performRequest(t, handler, http.MethodPost, "/v1/memories", "sola-token", "same-client-key", body)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first remember status=%d body=%s", first.Code, first.Body.String())
+	}
+	var solaMemory cortex.Memory
+	decodeResponse(t, first, &solaMemory)
+	body["content"] = "Second agent content"
+	body["memory_key"] = "nua-key"
+	second := performRequest(t, handler, http.MethodPost, "/v1/memories", "nua-token", "same-client-key", body)
+	if second.Code != http.StatusCreated {
+		t.Fatalf("second remember status=%d body=%s", second.Code, second.Body.String())
+	}
+	var nuaMemory cortex.Memory
+	decodeResponse(t, second, &nuaMemory)
+	if nuaMemory.ID == solaMemory.ID || nuaMemory.CreatedBy != "nua" {
+		t.Fatalf("cross-agent idempotency collision: sola=%#v nua=%#v", solaMemory, nuaMemory)
+	}
+}
+
 func performRequest(t *testing.T, handler http.Handler, method, path, token, idempotencyKey string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	var encoded []byte

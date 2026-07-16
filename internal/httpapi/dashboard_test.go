@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -59,6 +60,9 @@ func TestDashboardLoginAndReview(t *testing.T) {
 	if len(cookies) != 1 || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteStrictMode {
 		t.Fatalf("login cookies = %#v", cookies)
 	}
+	if cookies[0].Value == "mika-token" {
+		t.Fatal("dashboard cookie contains the raw bearer token")
+	}
 
 	dashboardRequest := httptest.NewRequest(http.MethodGet, "/", nil)
 	dashboardRequest.AddCookie(cookies[0])
@@ -67,8 +71,37 @@ func TestDashboardLoginAndReview(t *testing.T) {
 	if dashboard.Code != http.StatusOK || !strings.Contains(dashboard.Body.String(), memory.Title) {
 		t.Fatalf("dashboard status=%d body=%s", dashboard.Code, dashboard.Body.String())
 	}
+	csrfMatch := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindStringSubmatch(dashboard.Body.String())
+	if len(csrfMatch) != 2 {
+		t.Fatalf("dashboard did not render a CSRF token: %s", dashboard.Body.String())
+	}
+	csrfToken := csrfMatch[1]
 
-	reviewForm := url.Values{"decision": {"approve"}, "reason": {"Reviewed in dashboard"}}
+	cookieOnlyAPI := httptest.NewRequest(http.MethodGet, "/v1/capabilities", nil)
+	cookieOnlyAPI.AddCookie(cookies[0])
+	cookieOnly := httptest.NewRecorder()
+	handler.ServeHTTP(cookieOnly, cookieOnlyAPI)
+	if cookieOnly.Code != http.StatusUnauthorized {
+		t.Fatalf("dashboard cookie authenticated API request: status=%d", cookieOnly.Code)
+	}
+
+	missingCSRFForm := url.Values{"decision": {"approve"}}
+	missingCSRFRequest := httptest.NewRequest(
+		http.MethodPost,
+		"/ui/memories/"+memory.ID+"/review",
+		strings.NewReader(missingCSRFForm.Encode()),
+	)
+	missingCSRFRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	missingCSRFRequest.AddCookie(cookies[0])
+	missingCSRF := httptest.NewRecorder()
+	handler.ServeHTTP(missingCSRF, missingCSRFRequest)
+	if missingCSRF.Code != http.StatusForbidden {
+		t.Fatalf("review without CSRF status=%d, want 403", missingCSRF.Code)
+	}
+
+	reviewForm := url.Values{
+		"csrf": {csrfToken}, "decision": {"approve"}, "reason": {"Reviewed in dashboard"},
+	}
 	reviewRequest := httptest.NewRequest(
 		http.MethodPost,
 		"/ui/memories/"+memory.ID+"/review",
@@ -91,5 +124,14 @@ func TestDashboardLoginAndReview(t *testing.T) {
 	}
 	if len(recalled.Items) != 1 || recalled.Items[0].Memory.Lifecycle != cortex.LifecycleActive {
 		t.Fatalf("dashboard review did not approve memory: %#v", recalled.Items)
+	}
+
+	detailRequest := httptest.NewRequest(http.MethodGet, "/ui/memories/"+memory.ID, nil)
+	detailRequest.AddCookie(cookies[0])
+	detail := httptest.NewRecorder()
+	handler.ServeHTTP(detail, detailRequest)
+	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "Usage and changes") ||
+		!strings.Contains(detail.Body.String(), "approved") {
+		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
 }

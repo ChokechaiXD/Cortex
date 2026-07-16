@@ -29,10 +29,22 @@ func (hub *Hub) Recall(ctx context.Context, query RecallQuery) (RecallResult, er
 	}
 	defer func() { _ = tx.Rollback() }()
 	if query.IdempotencyKey != "" {
-		if recallID, found, err := requestResource(ctx, tx, query.IdempotencyKey, "recall"); err != nil {
+		requestKey := scopedRequestKey(query.AgentID, query.IdempotencyKey)
+		if recallID, found, err := requestResource(ctx, tx, requestKey, "recall"); err != nil {
 			return RecallResult{}, fmt.Errorf("check recall request: %w", err)
 		} else if found {
-			return loadRecall(ctx, tx, recallID)
+			stored, err := loadRecall(ctx, tx, recallID)
+			if err != nil {
+				return RecallResult{}, err
+			}
+			visible := stored.Items[:0]
+			for _, item := range stored.Items {
+				if hub.canRecall(item.Memory, query) {
+					visible = append(visible, item)
+				}
+			}
+			stored.Items = visible
+			return stored, nil
 		}
 	}
 
@@ -45,8 +57,17 @@ SELECT m.id, bm25(memory_fts) AS rank
 FROM memory_fts
 JOIN memories m ON m.id = memory_fts.memory_id
 WHERE memory_fts MATCH ?
+  AND (m.lifecycle IN ('active', 'canonical') OR (? AND m.lifecycle = 'candidate'))
+  AND (
+    m.scope = 'global'
+    OR (m.scope = 'project' AND ? != '' AND m.scope_key = ?)
+    OR (m.scope = 'domain' AND ? != '' AND m.scope_key = ?)
+    OR (m.scope = 'private' AND (m.created_by = ? OR ?))
+  )
 ORDER BY rank
-LIMIT 100`, ftsQuery)
+LIMIT 100`, ftsQuery, query.IncludeCandidates,
+		query.Project, query.Project, query.Domain, query.Domain,
+		query.AgentID, hub.isAdmin(query.AgentID))
 	if err != nil {
 		return RecallResult{}, fmt.Errorf("search memories: %w", err)
 	}
@@ -110,7 +131,8 @@ VALUES (?, ?, ?, ?)`, result.ID, item.Memory.ID, index+1, item.Score); err != ni
 		return err
 	}
 	if query.IdempotencyKey != "" {
-		if err := recordRequest(ctx, tx, query.IdempotencyKey, "recall", result.ID, now); err != nil {
+		requestKey := scopedRequestKey(query.AgentID, query.IdempotencyKey)
+		if err := recordRequest(ctx, tx, requestKey, "recall", result.ID, now); err != nil {
 			return fmt.Errorf("record recall request: %w", err)
 		}
 	}
@@ -163,9 +185,9 @@ func (hub *Hub) canRecall(memory Memory, query RecallQuery) bool {
 	}
 	switch memory.Scope {
 	case ScopeProject:
-		return query.Project == "" || memory.ScopeKey == query.Project
+		return query.Project != "" && memory.ScopeKey == query.Project
 	case ScopeDomain:
-		return query.Domain == "" || memory.ScopeKey == query.Domain
+		return query.Domain != "" && memory.ScopeKey == query.Domain
 	default:
 		return true
 	}

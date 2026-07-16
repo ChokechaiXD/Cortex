@@ -12,7 +12,7 @@
       <p class="eyebrow">STANDALONE · LOCAL-FIRST</p>
       <h1>Cortex</h1>
     </div>
-    <form method="post" action="/logout"><button class="quiet" type="submit">Sign out · {{.AgentID}}</button></form>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">Sign out · {{.AgentID}}</button></form>
   </header>
   <main>
     <section class="stats" aria-label="Memory overview">
@@ -32,7 +32,7 @@
           <span class="status status-{{.Lifecycle}}">{{.Lifecycle}}</span>
           <span>{{.Kind}}</span><span>{{.Scope}}{{if .ScopeKey}} · {{.ScopeKey}}{{end}}</span>
         </div>
-        <h3>{{.Title}}</h3>
+        <h3><a href="/ui/memories/{{.ID}}">{{.Title}}</a></h3>
         <p>{{.Content}}</p>
         <dl>
           <div><dt>Truth</dt><dd>{{printf "%.2f" .TruthScore}}</dd></div>
@@ -42,11 +42,13 @@
         </dl>
         {{if or .CanApprove .CanPromote .CanReject .CanArchive}}
         <form method="post" action="/ui/memories/{{.ID}}/review" class="review-form">
+          <input type="hidden" name="csrf" value="{{$.CSRFToken}}">
           <input name="reason" placeholder="Review reason (optional)" aria-label="Review reason">
           <div class="actions">
             {{if .CanApprove}}<button name="decision" value="approve" type="submit">Approve</button>{{end}}
             {{if .CanPromote}}<button name="decision" value="promote" type="submit">Promote</button>{{end}}
             {{if .CanReject}}<button class="danger" name="decision" value="reject" type="submit">Reject</button>{{end}}
+            {{if .CanSupersede}}<button class="quiet" name="decision" value="supersede" type="submit">Supersede</button>{{end}}
             {{if .CanArchive}}<button class="quiet" name="decision" value="archive" type="submit">Archive</button>{{end}}
           </div>
         </form>

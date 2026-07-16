@@ -36,10 +36,11 @@ const (
 type ReviewDecision string
 
 const (
-	ReviewApprove ReviewDecision = "approve"
-	ReviewPromote ReviewDecision = "promote"
-	ReviewReject  ReviewDecision = "reject"
-	ReviewArchive ReviewDecision = "archive"
+	ReviewApprove   ReviewDecision = "approve"
+	ReviewPromote   ReviewDecision = "promote"
+	ReviewReject    ReviewDecision = "reject"
+	ReviewSupersede ReviewDecision = "supersede"
+	ReviewArchive   ReviewDecision = "archive"
 )
 
 type FeedbackOutcome string
@@ -57,9 +58,12 @@ type EventType string
 const (
 	EventCreated      EventType = "created"
 	EventImported     EventType = "imported"
+	EventObserved     EventType = "observed"
+	EventRevised      EventType = "revised"
 	EventApproved     EventType = "approved"
 	EventPromoted     EventType = "promoted"
 	EventRejected     EventType = "rejected"
+	EventSuperseded   EventType = "superseded"
 	EventArchived     EventType = "archived"
 	EventRecalled     EventType = "recalled"
 	EventConfirmed    EventType = "confirmed"

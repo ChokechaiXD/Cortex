@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import uuid
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -94,3 +97,27 @@ class CortexClient:
 def _request_id(operation: str) -> str:
     return f"hermes/{operation}/{uuid.uuid4().hex}"
 
+
+def write_private_json(path: Path, value: dict[str, Any]) -> None:
+    """Atomically replace a connector config without leaving a partial token file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        os.chmod(temporary_path, 0o600)
+        handle = os.fdopen(descriptor, "w", encoding="utf-8", newline="\n")
+        descriptor = -1
+        with handle:
+            json.dump(value, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        if descriptor >= 0:
+            os.close(descriptor)
+        temporary_path.unlink(missing_ok=True)
+        raise

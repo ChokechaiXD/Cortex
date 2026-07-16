@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 from agent.memory_provider import MemoryProvider
 from tools.registry import tool_error
 
-from .client import CortexClient, CortexError
+from .client import CortexClient, CortexError, write_private_json
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ REVIEW_SCHEMA = {
         "type": "object",
         "properties": {
             "memory_id": {"type": "string"},
-            "decision": {"type": "string", "enum": ["approve", "promote", "reject", "archive"]},
+            "decision": {"type": "string", "enum": ["approve", "promote", "reject", "supersede", "archive"]},
             "reason": {"type": "string"},
         },
         "required": ["memory_id", "decision"],
@@ -132,7 +132,7 @@ class CortexMemoryProvider(MemoryProvider):
         path = Path(hermes_home) / CONFIG_NAME
         existing = _read_json(path)
         existing.update(values)
-        path.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        write_private_json(path, existing)
 
     def system_prompt_block(self) -> str:
         if not self._client:
@@ -178,6 +178,8 @@ class CortexMemoryProvider(MemoryProvider):
                 payload = dict(args)
                 payload["session_id"] = self._session_id
                 payload.setdefault("scope_key", "")
+                if payload.get("scope") == "private" and not payload["scope_key"]:
+                    payload["scope_key"] = self._agent_id
                 return json.dumps(self._client.remember(payload), ensure_ascii=False)
             if tool_name == "cortex_recall":
                 payload = {
@@ -249,4 +251,3 @@ def _format_recall(result: dict[str, Any]) -> str:
 
 def register(ctx) -> None:
     ctx.register_memory_provider(CortexMemoryProvider())
-

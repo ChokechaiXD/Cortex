@@ -2,17 +2,18 @@ package httpapi
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"embed"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"cortex.local/cortex/internal/cortex"
 )
-
-const dashboardCookieName = "cortex_token"
 
 //go:embed templates/*.html static/*.css
 var dashboardAssets embed.FS
@@ -21,6 +22,7 @@ var dashboardTemplates = template.Must(template.ParseFS(dashboardAssets, "templa
 
 type dashboardView struct {
 	AgentID   string
+	CSRFToken string
 	Total     int
 	Candidate int
 	Active    int
@@ -30,15 +32,28 @@ type dashboardView struct {
 
 type dashboardMemory struct {
 	cortex.Memory
-	CanApprove bool
-	CanPromote bool
-	CanReject  bool
-	CanArchive bool
+	CanApprove   bool
+	CanPromote   bool
+	CanReject    bool
+	CanSupersede bool
+	CanArchive   bool
+}
+
+type dashboardDetailView struct {
+	AgentID   string
+	CSRFToken string
+	Memory    dashboardMemory
+	Events    []dashboardEvent
+}
+
+type dashboardEvent struct {
+	cortex.Event
+	MetadataJSON string
 }
 
 func (server *Server) dashboard(writer http.ResponseWriter, request *http.Request) {
 	setDashboardHeaders(writer)
-	agentID, ok := server.dashboardIdentity(request)
+	_, session, ok := server.sessions.fromRequest(request)
 	if !ok {
 		writer.Header().Set("Cache-Control", "no-store")
 		if err := dashboardTemplates.ExecuteTemplate(writer, "login.html", nil); err != nil {
@@ -46,13 +61,14 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		}
 		return
 	}
-	overview, err := server.hub.Overview(request.Context(), agentID, 200)
+	overview, err := server.hub.Overview(request.Context(), session.AgentID, 200)
 	if err != nil {
 		writeDomainError(writer, err)
 		return
 	}
 	view := dashboardView{
-		AgentID:   agentID,
+		AgentID:   session.AgentID,
+		CSRFToken: session.CSRFToken,
 		Candidate: overview.Counts[cortex.LifecycleCandidate],
 		Active:    overview.Counts[cortex.LifecycleActive],
 		Canonical: overview.Counts[cortex.LifecycleCanonical],
@@ -66,6 +82,7 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		item.CanApprove = memory.Lifecycle == cortex.LifecycleCandidate
 		item.CanPromote = memory.Lifecycle == cortex.LifecycleActive
 		item.CanReject = memory.Lifecycle == cortex.LifecycleCandidate || memory.Lifecycle == cortex.LifecycleActive
+		item.CanSupersede = memory.Lifecycle != cortex.LifecycleSuperseded && memory.Lifecycle != cortex.LifecycleArchived
 		view.Memories = append(view.Memories, item)
 	}
 	writer.Header().Set("Cache-Control", "no-store")
@@ -81,21 +98,40 @@ func (server *Server) login(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	token := strings.TrimSpace(request.FormValue("token"))
-	if _, ok := server.auth.Authenticate(token); !ok {
+	agentID, ok := server.auth.Authenticate(token)
+	if !ok {
 		http.Error(writer, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	sessionID, session, err := server.sessions.create(agentID)
+	if err != nil {
+		http.Error(writer, "create session", http.StatusInternalServerError)
 		return
 	}
 	http.SetCookie(writer, &http.Cookie{
 		Name:     dashboardCookieName,
-		Value:    token,
+		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
+		Expires:  session.ExpiresAt,
+		MaxAge:   int(dashboardSessionTTL / time.Second),
 	})
 	http.Redirect(writer, request, "/", http.StatusSeeOther)
 }
 
 func (server *Server) logout(writer http.ResponseWriter, request *http.Request) {
+	sessionID, session, ok := server.sessions.fromRequest(request)
+	if !ok {
+		http.Redirect(writer, request, "/", http.StatusSeeOther)
+		return
+	}
+	request.Body = http.MaxBytesReader(writer, request.Body, 4096)
+	if err := request.ParseForm(); err != nil || !validCSRF(session.CSRFToken, request.FormValue("csrf")) {
+		http.Error(writer, "invalid csrf token", http.StatusForbidden)
+		return
+	}
+	server.sessions.delete(sessionID)
 	http.SetCookie(writer, &http.Cookie{
 		Name: dashboardCookieName, Value: "", Path: "/", HttpOnly: true,
 		SameSite: http.SameSiteStrictMode, MaxAge: -1,
@@ -104,7 +140,7 @@ func (server *Server) logout(writer http.ResponseWriter, request *http.Request) 
 }
 
 func (server *Server) dashboardReview(writer http.ResponseWriter, request *http.Request) {
-	agentID, ok := server.dashboardIdentity(request)
+	_, session, ok := server.sessions.fromRequest(request)
 	if !ok {
 		http.Redirect(writer, request, "/", http.StatusSeeOther)
 		return
@@ -112,6 +148,10 @@ func (server *Server) dashboardReview(writer http.ResponseWriter, request *http.
 	request.Body = http.MaxBytesReader(writer, request.Body, 8192)
 	if err := request.ParseForm(); err != nil {
 		http.Error(writer, "invalid review", http.StatusBadRequest)
+		return
+	}
+	if !validCSRF(session.CSRFToken, request.FormValue("csrf")) {
+		http.Error(writer, "invalid csrf token", http.StatusForbidden)
 		return
 	}
 	requestID, err := dashboardRequestID()
@@ -122,7 +162,7 @@ func (server *Server) dashboardReview(writer http.ResponseWriter, request *http.
 	_, err = server.hub.Review(request.Context(), cortex.ReviewCommand{
 		IdempotencyKey: requestID,
 		MemoryID:       request.PathValue("memoryID"),
-		ActorID:        agentID,
+		ActorID:        session.AgentID,
 		Decision:       cortex.ReviewDecision(request.FormValue("decision")),
 		Reason:         strings.TrimSpace(request.FormValue("reason")),
 	})
@@ -130,15 +170,41 @@ func (server *Server) dashboardReview(writer http.ResponseWriter, request *http.
 		writeDomainError(writer, err)
 		return
 	}
-	http.Redirect(writer, request, "/", http.StatusSeeOther)
+	redirectTo := "/"
+	if expected := "/ui/memories/" + request.PathValue("memoryID"); request.FormValue("return_to") == expected {
+		redirectTo = expected
+	}
+	http.Redirect(writer, request, redirectTo, http.StatusSeeOther)
 }
 
-func (server *Server) dashboardIdentity(request *http.Request) (string, bool) {
-	token := authenticationToken(request)
-	if token == "" {
-		return "", false
+func (server *Server) dashboardDetail(writer http.ResponseWriter, request *http.Request) {
+	setDashboardHeaders(writer)
+	_, session, ok := server.sessions.fromRequest(request)
+	if !ok {
+		http.Redirect(writer, request, "/", http.StatusSeeOther)
+		return
 	}
-	return server.auth.Authenticate(token)
+	memory, events, err := server.hub.Inspect(request.Context(), cortex.HistoryQuery{
+		MemoryID: request.PathValue("memoryID"), AgentID: session.AgentID,
+	})
+	if err != nil {
+		writeDomainError(writer, err)
+		return
+	}
+	item := dashboardMemory{Memory: memory, CanArchive: memory.Lifecycle != cortex.LifecycleArchived}
+	item.CanApprove = memory.Lifecycle == cortex.LifecycleCandidate
+	item.CanPromote = memory.Lifecycle == cortex.LifecycleActive
+	item.CanReject = memory.Lifecycle == cortex.LifecycleCandidate || memory.Lifecycle == cortex.LifecycleActive
+	item.CanSupersede = memory.Lifecycle != cortex.LifecycleSuperseded && memory.Lifecycle != cortex.LifecycleArchived
+	view := dashboardDetailView{AgentID: session.AgentID, CSRFToken: session.CSRFToken, Memory: item}
+	for _, event := range events {
+		metadata, _ := json.Marshal(event.Metadata)
+		view.Events = append(view.Events, dashboardEvent{Event: event, MetadataJSON: string(metadata)})
+	}
+	writer.Header().Set("Cache-Control", "no-store")
+	if err := dashboardTemplates.ExecuteTemplate(writer, "detail.html", view); err != nil {
+		http.Error(writer, "render memory detail", http.StatusInternalServerError)
+	}
 }
 
 func dashboardRequestID() (string, error) {
@@ -147,6 +213,10 @@ func dashboardRequestID() (string, error) {
 		return "", fmt.Errorf("generate dashboard request id: %w", err)
 	}
 	return "dashboard/review/" + hex.EncodeToString(raw[:]), nil
+}
+
+func validCSRF(expected, supplied string) bool {
+	return expected != "" && subtle.ConstantTimeCompare([]byte(expected), []byte(supplied)) == 1
 }
 
 func setDashboardHeaders(writer http.ResponseWriter) {

@@ -15,14 +15,25 @@ func (hub *Hub) Feedback(ctx context.Context, cmd FeedbackCommand) (Memory, erro
 		return Memory{}, fmt.Errorf("begin feedback: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if memoryID, found, err := requestResource(ctx, tx, cmd.IdempotencyKey, "feedback"); err != nil {
+	requestKey := scopedRequestKey(cmd.AgentID, cmd.IdempotencyKey)
+	if memoryID, found, err := requestResource(ctx, tx, requestKey, "feedback"); err != nil {
 		return Memory{}, fmt.Errorf("check feedback request: %w", err)
 	} else if found {
-		return getMemory(ctx, tx, memoryID)
+		memory, err := getMemory(ctx, tx, memoryID)
+		if err != nil {
+			return Memory{}, err
+		}
+		if !hub.canFeedback(memory, cmd.AgentID) {
+			return Memory{}, ErrForbidden
+		}
+		return memory, nil
 	}
 	memory, err := getMemory(ctx, tx, cmd.MemoryID)
 	if err != nil {
 		return Memory{}, err
+	}
+	if !hub.canFeedback(memory, cmd.AgentID) {
+		return Memory{}, ErrForbidden
 	}
 	truth, utility, eventType := applyFeedback(memory.TruthScore, memory.UtilityScore, cmd.Outcome)
 	eventID, err := newID("evt")
@@ -41,7 +52,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`, eventID, cmd.MemoryID, eventType,
 		cmd.AgentID, cmd.SessionID, cmd.Reason, now); err != nil {
 		return Memory{}, fmt.Errorf("record feedback event: %w", err)
 	}
-	if err := recordRequest(ctx, tx, cmd.IdempotencyKey, "feedback", cmd.MemoryID, now); err != nil {
+	if err := recordRequest(ctx, tx, requestKey, "feedback", cmd.MemoryID, now); err != nil {
 		return Memory{}, fmt.Errorf("record feedback request: %w", err)
 	}
 	memory, err = getMemory(ctx, tx, cmd.MemoryID)
@@ -52,4 +63,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`, eventID, cmd.MemoryID, eventType,
 		return Memory{}, fmt.Errorf("commit feedback: %w", err)
 	}
 	return memory, nil
+}
+
+func (hub *Hub) canFeedback(memory Memory, agentID string) bool {
+	if hub.isAdmin(agentID) || memory.CreatedBy == agentID {
+		return true
+	}
+	if memory.Scope == ScopePrivate {
+		return false
+	}
+	return memory.Lifecycle == LifecycleActive || memory.Lifecycle == LifecycleCanonical
 }

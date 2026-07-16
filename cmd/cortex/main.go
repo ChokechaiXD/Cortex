@@ -193,10 +193,15 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer hub.Close()
+	authenticator, err := config.NewReloadingAuthenticator(*dataDir)
+	if err != nil {
+		fmt.Fprintf(stderr, "initialize authenticator: %v\n", err)
+		return 1
+	}
 
 	server := &http.Server{
 		Addr:              address,
-		Handler:           httpapi.New(hub, file),
+		Handler:           httpapi.New(hub, authenticator),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

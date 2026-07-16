@@ -36,14 +36,3 @@ func bearerToken(request *http.Request) string {
 	}
 	return strings.TrimSpace(token)
 }
-
-func authenticationToken(request *http.Request) string {
-	if token := bearerToken(request); token != "" {
-		return token
-	}
-	cookie, err := request.Cookie(dashboardCookieName)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(cookie.Value)
-}

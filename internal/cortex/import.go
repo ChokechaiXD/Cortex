@@ -27,7 +27,7 @@ func (hub *Hub) ImportCandidate(ctx context.Context, command ImportCommand) (Mem
 	}
 	defer func() { _ = tx.Rollback() }()
 	memory, created, err := insertCandidate(ctx, tx, candidateInput{
-		idempotencyKey: command.IdempotencyKey,
+		idempotencyKey: scopedRequestKey(command.AgentID, command.IdempotencyKey),
 		operation:      "import",
 		kind:           command.Kind,
 		scope:          command.Scope,

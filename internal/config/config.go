@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 )
 
 const (
@@ -34,6 +35,32 @@ type File struct {
 	Listen      string       `json:"listen"`
 	AdminAgents []string     `json:"admin_agents"`
 	Credentials []Credential `json:"credentials"`
+}
+
+type ReloadingAuthenticator struct {
+	dataDir string
+	mu      sync.RWMutex
+	current File
+}
+
+func NewReloadingAuthenticator(dataDir string) (*ReloadingAuthenticator, error) {
+	current, err := Load(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	return &ReloadingAuthenticator{dataDir: dataDir, current: current}, nil
+}
+
+func (auth *ReloadingAuthenticator) Authenticate(token string) (string, bool) {
+	// ponytail: the config is intentionally re-read on auth; it is tiny and agent additions must work without restart.
+	if latest, err := Load(auth.dataDir); err == nil {
+		auth.mu.Lock()
+		auth.current = latest
+		auth.mu.Unlock()
+	}
+	auth.mu.RLock()
+	defer auth.mu.RUnlock()
+	return auth.current.Authenticate(token)
 }
 
 func Initialize(dataDir, adminAgent, listen string) (File, string, error) {

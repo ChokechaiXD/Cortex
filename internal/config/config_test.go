@@ -68,3 +68,27 @@ func TestInitializeRefusesExistingConfig(t *testing.T) {
 		t.Fatal("second initialize overwrote existing config")
 	}
 }
+
+func TestReloadingAuthenticatorAcceptsNewAgentWithoutRestart(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	_, initialToken, err := Initialize(dataDir, "mika", "127.0.0.1:7777")
+	if err != nil {
+		t.Fatalf("initialize config: %v", err)
+	}
+	auth, err := NewReloadingAuthenticator(dataDir)
+	if err != nil {
+		t.Fatalf("create reloading authenticator: %v", err)
+	}
+	if agentID, ok := auth.Authenticate(initialToken); !ok || agentID != "mika" {
+		t.Fatalf("authenticate initial agent = %q, %v", agentID, ok)
+	}
+	solaToken, err := AddAgent(dataDir, "sola", false)
+	if err != nil {
+		t.Fatalf("add agent: %v", err)
+	}
+	if agentID, ok := auth.Authenticate(solaToken); !ok || agentID != "sola" {
+		t.Fatalf("authenticate newly added agent = %q, %v", agentID, ok)
+	}
+}

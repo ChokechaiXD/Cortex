@@ -55,6 +55,24 @@ ORDER BY created_at, rowid`, query.MemoryID)
 	return events, nil
 }
 
+func (hub *Hub) Inspect(ctx context.Context, query HistoryQuery) (Memory, []Event, error) {
+	if query.MemoryID == "" || query.AgentID == "" {
+		return Memory{}, nil, fmt.Errorf("%w: memory_id and agent_id are required", ErrInvalidInput)
+	}
+	memory, err := getMemory(ctx, hub.db, query.MemoryID)
+	if err != nil {
+		return Memory{}, nil, err
+	}
+	if !hub.canInspect(memory, query.AgentID) {
+		return Memory{}, nil, ErrForbidden
+	}
+	events, err := hub.History(ctx, query)
+	if err != nil {
+		return Memory{}, nil, err
+	}
+	return memory, events, nil
+}
+
 func (hub *Hub) canInspect(memory Memory, agentID string) bool {
 	if hub.isAdmin(agentID) || memory.CreatedBy == agentID {
 		return true

@@ -12,9 +12,10 @@ the user's control. Agent frameworks are adapters; they never own the database.
 - Candidate → active → canonical review lifecycle
 - Separate truth and utility scores
 - Idempotent writes and recalls
+- Stable memory keys with immutable revisions instead of duplicate records
 - Append-only audit events
 - Bearer-token identity with SHA-256 hashes at rest
-- Local server-rendered management dashboard
+- Local dashboard with opaque sessions, CSRF protection, and per-memory history
 - Embedded Hermes connector installer
 - Read-only Holographic importer; imported facts stay candidates
 
@@ -47,7 +48,9 @@ candidate memories from the dashboard.
 
 When a new Hermes profile appears, run the same `connector sync hermes` command
 again. Existing valid profile tokens are reused. New profiles receive isolated
-tokens and the same standalone Cortex endpoint.
+tokens and the same standalone Cortex endpoint. A running Cortex server reloads
+new regular-agent credentials automatically; restart only when granting a new
+governor role.
 
 ## Import Holographic memory
 
@@ -70,7 +73,7 @@ automatically. Repeating an unchanged import is idempotent.
 |---|---|---|
 | `GET` | `/v1/health` | Process health |
 | `GET` | `/v1/capabilities` | Protocol features |
-| `POST` | `/v1/memories` | Create candidate memory |
+| `POST` | `/v1/memories` | Create or revise candidate memory |
 | `POST` | `/v1/recalls` | Search visible reviewed memory |
 | `POST` | `/v1/memories/{id}/feedback` | Update truth or utility evidence |
 | `POST` | `/v1/memories/{id}/review` | Governor lifecycle decision |
@@ -90,4 +93,3 @@ go vet ./...
 
 See [Architecture](docs/architecture.md) and [v0.1 specification](docs/spec.md)
 for module boundaries and invariants.
-
