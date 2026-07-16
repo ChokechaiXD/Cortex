@@ -24,6 +24,10 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
+type queryRower interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
 func scanMemory(row rowScanner) (Memory, error) {
 	var memory Memory
 	var kind, scope, lifecycle, tagsJSON, createdAt, updatedAt string
@@ -57,9 +61,7 @@ func scanMemory(row rowScanner) (Memory, error) {
 	return memory, nil
 }
 
-func getMemory(ctx context.Context, queryer interface {
-	QueryRowContext(context.Context, string, ...any) *sql.Row
-}, memoryID string) (Memory, error) {
+func getMemory(ctx context.Context, queryer queryRower, memoryID string) (Memory, error) {
 	return scanMemory(queryer.QueryRowContext(ctx, selectMemorySQL, memoryID))
 }
 
