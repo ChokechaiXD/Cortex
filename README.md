@@ -4,7 +4,7 @@ Cortex is a standalone, local-first shared memory hub for AI agents. It keeps
 memory records, scores, usage events, reviews, and connector credentials under
 the user's control. Agent frameworks are adapters; they never own the database.
 
-## What v0.3 provides
+## What v0.4 provides
 
 - One Go executable and one SQLite database
 - WAL mode, FTS5 search, versioned schema migrations
@@ -19,6 +19,10 @@ the user's control. Agent frameworks are adapters; they never own the database.
   one-click Hermes agent discovery, and per-memory history
 - Memory Explorer with FTS5 search and lifecycle, kind, scope, project/domain,
   and creator filters
+- Candidate Inbox that groups imported backlog without a model, plus confirmed
+  all-or-nothing bulk review for selected memories
+- Dashboard-only Hermes settings for each agent's project/domain routing,
+  capture interval, lesson size, and recall token budgets
 - Token-budgeted recall before usage is recorded, so trimmed memories do not
   distort feedback or learning scores
 - User-level Windows autostart with no administrator permission required
@@ -71,10 +75,13 @@ emergency fallback.
 who prefer a batch file. It calls the installed launcher, reuses the configured
 port, and exits immediately.
 
-Daily work is dashboard-only: search and review memories, restart or stop Cortex,
-and press **Discover & connect agents** whenever a new Hermes profile appears.
-The connector action creates a timestamped rollback snapshot before changing any
-profile. No terminal is needed for these operations.
+Daily work is dashboard-only: search and review memories, use **Candidate
+Inbox** to inspect imported knowledge in small groups, tune each agent's memory
+routing and token budgets, restart or stop Cortex, and press **Discover &
+connect agents** whenever a new Hermes profile appears. Bulk review changes all
+selected records in one transaction or changes none of them. Connector and
+profile-setting actions create timestamped rollback snapshots before changing
+profiles. No terminal is needed for these operations.
 
 The dashboard also exposes **Cortex Curator**. Its free deterministic gate can
 organize review work after a configurable number of durable memory events. In

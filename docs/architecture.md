@@ -74,6 +74,8 @@ than it understands.
     persisted; omitted context cannot influence learning scores.
 14. The local launcher never transmits its long-lived key; signed proofs and UI
     codes expire after 30 seconds and cannot be replayed.
+15. A batch review validates every selected transition before one transaction
+    mutates any memory; one invalid transition leaves the entire batch unchanged.
 
 ## Evolution points
 

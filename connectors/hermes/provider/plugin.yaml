@@ -1,4 +1,4 @@
 name: cortex
-version: 0.3.0
+version: 0.3.1
 description: "Standalone local shared memory with review, scoring, and immutable usage history."
 hooks: []

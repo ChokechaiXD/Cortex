@@ -21,8 +21,11 @@ administrator permission is not required.
 Open **Cortex Dashboard** from the Windows Start Menu. The shortcut checks
 `/v1/health`, starts the installed service only when needed, and opens the
 configured loopback URL with a 30-second, one-time local session. It does not
-place an agent bearer token in the browser or command output. Use the dashboard for memory search/review,
-Hermes-agent discovery, restart, and graceful stop.
+place an agent bearer token in the browser or command output. Use the dashboard
+for memory search/review, grouped Candidate Inbox review, per-agent project or
+domain routing and token budgets, Hermes-agent discovery, restart, and graceful
+stop. Selected-memory bulk decisions are atomic: an invalid item rolls back the
+whole selection.
 
 Alternatively, double-click `Start Cortex.bat` from the Cortex folder. It uses
 the same installed executable and health-aware `open` command as the Start Menu
@@ -75,6 +78,11 @@ timestamped snapshot before changing credentials or any Hermes profile. It
 contains prior profile configs, connector files, and legacy Holographic
 database files. If any profile fails, Cortex restores every changed profile and
 its own credential config before returning an error.
+
+The dashboard's **Agent learning** section changes only Cortex connector
+settings. It preserves unknown Hermes configuration fields, never displays
+profile bearer tokens, and backs up the profile before each write. Changes are
+picked up when that agent starts its next Hermes session.
 
 ## Holographic migration
 
