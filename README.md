@@ -25,6 +25,8 @@ the user's control. Agent frameworks are adapters; they never own the database.
 - Start Menu shortcut that starts Cortex only when needed and signs into the
   dashboard with a short-lived, one-time local code
 - Embedded Hermes connector installer
+- Strict Hermes auto-capture that stores only explicitly marked durable lessons,
+  deduplicates them, and never mirrors raw conversation turns
 - Read-only Holographic importer; imported facts stay candidates
 - Deterministic Curator with manual, assisted, and guarded automatic modes
 - Durable repeated-observation evidence tied to the current memory revision

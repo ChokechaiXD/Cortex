@@ -62,6 +62,18 @@ This unrelated explanation must not be stored.
         self.assertEqual(buffer.observe("Working solution: Reuse port 7777."), [])
         self.assertEqual([item.content for item in buffer.drain()], ["Reuse port 7777."])
 
+    def test_buffer_restores_unsaved_lessons_without_duplicates(self):
+        buffer = LessonBuffer(every_turns=1)
+        proposals = buffer.observe("Working solution: Retry after restart.")
+
+        buffer.restore(proposals)
+        buffer.restore(proposals)
+
+        self.assertEqual(
+            [item.content for item in buffer.drain()],
+            ["Retry after restart."],
+        )
+
     def test_memory_request_is_private_without_project_and_idempotent(self):
         proposal = extract_lessons("Working solution: Reuse port 7777.")[0]
 

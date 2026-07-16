@@ -110,6 +110,22 @@ class LessonBuffer:
         self._signatures.clear()
         return proposals
 
+    def restore(self, proposals: list[LessonProposal]) -> None:
+        """Return unsaved proposals to the front of the bounded queue."""
+        combined = proposals + self._pending
+        restored: list[LessonProposal] = []
+        signatures: set[tuple[str, str]] = set()
+        for proposal in combined:
+            signature = (proposal.kind, _normalize(proposal.content))
+            if signature in signatures:
+                continue
+            restored.append(proposal)
+            signatures.add(signature)
+            if len(restored) >= self.max_pending:
+                break
+        self._pending = restored
+        self._signatures = signatures
+
 
 def build_memory_request(
     proposal: LessonProposal,

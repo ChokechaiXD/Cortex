@@ -12,6 +12,7 @@ from agent.memory_provider import MemoryProvider
 from tools.registry import tool_error
 
 from .client import CortexClient, CortexError, write_private_json
+from .extraction import LessonBuffer, LessonProposal, build_memory_request
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,15 @@ class CortexMemoryProvider(MemoryProvider):
         self._client: CortexClient | None = None
         self._session_id = ""
         self._agent_id = ""
+        self._capture_enabled = _as_bool(self._config.get("auto_capture_enabled"), True)
+        self._lesson_buffer = LessonBuffer(
+            every_turns=_bounded_int(
+                self._config.get("auto_capture_every_turns"), 5, 1, 50
+            ),
+            max_chars=_bounded_int(
+                self._config.get("auto_capture_max_chars"), 1000, 100, 4000
+            ),
+        )
 
     @property
     def name(self) -> str:
@@ -115,6 +125,11 @@ class CortexMemoryProvider(MemoryProvider):
         self._session_id = session_id
         self._agent_id = str(config.get("agent_id") or kwargs.get("agent_identity") or "").strip()
         self._config = config
+        self._capture_enabled = _as_bool(config.get("auto_capture_enabled"), True)
+        self._lesson_buffer = LessonBuffer(
+            every_turns=_bounded_int(config.get("auto_capture_every_turns"), 5, 1, 50),
+            max_chars=_bounded_int(config.get("auto_capture_max_chars"), 1000, 100, 4000),
+        )
         self._client = CortexClient(
             str(config.get("url") or "http://127.0.0.1:7777"),
             str(config.get("token") or ""),
@@ -142,6 +157,26 @@ class CortexMemoryProvider(MemoryProvider):
                 "description": "Default maximum estimated tokens returned by cortex_recall",
                 "default": 1200,
             },
+            {
+                "key": "default_project",
+                "description": "Optional project scope for shared auto-captured lessons",
+                "default": "",
+            },
+            {
+                "key": "auto_capture_enabled",
+                "description": "Capture only explicitly marked durable lessons",
+                "default": True,
+            },
+            {
+                "key": "auto_capture_every_turns",
+                "description": "Store queued lessons every N turns",
+                "default": 5,
+            },
+            {
+                "key": "auto_capture_max_chars",
+                "description": "Maximum characters stored from one marked lesson",
+                "default": 1000,
+            },
         ]
 
     def save_config(self, values: Dict[str, Any], hermes_home: str) -> None:
@@ -157,7 +192,10 @@ class CortexMemoryProvider(MemoryProvider):
             "# Cortex Shared Memory\n"
             "Use cortex_recall before repeating prior project work. Store verified lessons, decisions, "
             "failed attempts, and solutions with cortex_remember. New records are candidates; do not "
-            "treat them as shared truth until reviewed. Report outcomes with cortex_feedback."
+            "treat them as shared truth until reviewed. Report outcomes with cortex_feedback. "
+            "Only when a durable tested lesson emerges, append at most one short visible section headed "
+            "บทเรียนที่ควรจำ:, วิธีที่ไม่ควรทำซ้ำ:, Working solution:, or Decision to remember:. "
+            "Do not add it on routine turns. Cortex captures only that marked section as a candidate."
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
@@ -180,11 +218,43 @@ class CortexMemoryProvider(MemoryProvider):
         return _format_recall(result)
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages=None) -> None:
-        # ponytail: raw-turn mirroring is intentionally omitted; add an explicit extractor adapter when needed.
+        if not self._capture_enabled:
+            return None
+        self._flush_auto_capture(self._lesson_buffer.observe(assistant_content))
         return None
 
+    def on_session_end(self, messages) -> None:
+        if self._capture_enabled:
+            self._flush_auto_capture(self._lesson_buffer.drain())
+
     def on_session_switch(self, new_session_id: str, **kwargs) -> None:
+        if self._capture_enabled:
+            if kwargs.get("rewound"):
+                self._lesson_buffer.drain()
+            else:
+                self._flush_auto_capture(self._lesson_buffer.drain())
         self._session_id = new_session_id
+
+    def shutdown(self) -> None:
+        if self._capture_enabled:
+            self._flush_auto_capture(self._lesson_buffer.drain())
+
+    def _flush_auto_capture(self, proposals: list[LessonProposal]) -> None:
+        if not self._client:
+            return
+        for index, proposal in enumerate(proposals):
+            payload, idempotency_key = build_memory_request(
+                proposal,
+                agent_id=self._agent_id,
+                session_id=self._session_id,
+                default_project=str(self._config.get("default_project") or ""),
+            )
+            try:
+                self._client.remember(payload, idempotency_key)
+            except CortexError as exc:
+                logger.warning("Cortex auto-capture failed: %s", exc)
+                self._lesson_buffer.restore(proposals[index:])
+                break
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
         return [REMEMBER_SCHEMA, RECALL_SCHEMA, FEEDBACK_SCHEMA, REVIEW_SCHEMA]
@@ -288,6 +358,20 @@ def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
     except (TypeError, ValueError):
         parsed = default
     return max(minimum, min(maximum, parsed))
+
+
+def _as_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, str):
+        normalized = value.strip().casefold()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    return bool(value)
 
 
 def register(ctx) -> None:
