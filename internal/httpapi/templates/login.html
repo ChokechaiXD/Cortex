@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cortex · Sign in</title>
+  <link rel="stylesheet" href="/static/cortex.css">
+</head>
+<body class="login-shell">
+  <main class="login-card">
+    <p class="eyebrow">LOCAL MEMORY HUB</p>
+    <h1>Cortex</h1>
+    <p class="muted">Sign in with an administrator token. The token stays in an HttpOnly session cookie.</p>
+    <form method="post" action="/login" class="stack">
+      <label for="token">Administrator token</label>
+      <input id="token" name="token" type="password" required autocomplete="current-password" autofocus>
+      <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>

@@ -1,0 +1,93 @@
+# Cortex
+
+Cortex is a standalone, local-first shared memory hub for AI agents. It keeps
+memory records, scores, usage events, reviews, and connector credentials under
+the user's control. Agent frameworks are adapters; they never own the database.
+
+## What v0.1 provides
+
+- One Go executable and one SQLite database
+- WAL mode, FTS5 search, versioned schema migrations
+- Global, project, domain, and private scopes
+- Candidate → active → canonical review lifecycle
+- Separate truth and utility scores
+- Idempotent writes and recalls
+- Append-only audit events
+- Bearer-token identity with SHA-256 hashes at rest
+- Local server-rendered management dashboard
+- Embedded Hermes connector installer
+- Read-only Holographic importer; imported facts stay candidates
+
+No cloud account, LLM, embedding model, Redis, PostgreSQL, Docker, or Node.js
+runtime is required.
+
+## Build
+
+```powershell
+go build -trimpath -o bin\cortex.exe .\cmd\cortex
+```
+
+Go 1.26 or newer is required to build. The resulting executable carries the
+dashboard and Hermes connector assets.
+
+## First run
+
+```powershell
+bin\cortex.exe init
+bin\cortex.exe connector sync hermes --home "$env:LOCALAPPDATA\hermes"
+bin\cortex.exe serve
+```
+
+`init` prints the initial administrator token once. Keep it; Cortex stores only
+its SHA-256 hash. The default data directory is `%LOCALAPPDATA%\Cortex`, and the
+default listener is `127.0.0.1:7777`.
+
+Open `http://127.0.0.1:7777/`, sign in with an administrator token, and review
+candidate memories from the dashboard.
+
+When a new Hermes profile appears, run the same `connector sync hermes` command
+again. Existing valid profile tokens are reused. New profiles receive isolated
+tokens and the same standalone Cortex endpoint.
+
+## Import Holographic memory
+
+Stop writing to the old provider first, then import each database with its
+owner and optional project scope:
+
+```powershell
+bin\cortex.exe import holographic `
+  --database "$env:LOCALAPPDATA\hermes\memory_store.db" `
+  --agent mika
+```
+
+The importer opens the legacy database with SQLite `mode=ro`, preserves legacy
+trust and usage as score/provenance metadata, and never promotes imported facts
+automatically. Repeating an unchanged import is idempotent.
+
+## HTTP protocol
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/v1/health` | Process health |
+| `GET` | `/v1/capabilities` | Protocol features |
+| `POST` | `/v1/memories` | Create candidate memory |
+| `POST` | `/v1/recalls` | Search visible reviewed memory |
+| `POST` | `/v1/memories/{id}/feedback` | Update truth or utility evidence |
+| `POST` | `/v1/memories/{id}/review` | Governor lifecycle decision |
+| `GET` | `/v1/memories/{id}/history` | Read append-only audit history |
+
+Mutation requests and tracked recalls require an `Idempotency-Key` header.
+Agent identity always comes from the bearer token, never from JSON supplied by
+the caller.
+
+## Development
+
+```powershell
+go test ./...
+python -m unittest discover -s connectors\hermes\tests -p "test_*.py"
+go vet ./...
+```
+
+See [Architecture](docs/architecture.md) and [v0.1 specification](docs/spec.md)
+for module boundaries and invariants.
+

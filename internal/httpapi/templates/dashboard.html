@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cortex · Memory control</title>
+  <link rel="stylesheet" href="/static/cortex.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">STANDALONE · LOCAL-FIRST</p>
+      <h1>Cortex</h1>
+    </div>
+    <form method="post" action="/logout"><button class="quiet" type="submit">Sign out · {{.AgentID}}</button></form>
+  </header>
+  <main>
+    <section class="stats" aria-label="Memory overview">
+      <article><strong>{{.Total}}</strong><span>Total</span></article>
+      <article><strong>{{.Candidate}}</strong><span>Waiting review</span></article>
+      <article><strong>{{.Active}}</strong><span>Active</span></article>
+      <article><strong>{{.Canonical}}</strong><span>Canonical</span></article>
+    </section>
+    <section class="section-head">
+      <div><p class="eyebrow">AUDITABLE MEMORY</p><h2>Latest records</h2></div>
+      <p class="muted">Truth and utility are tracked separately. History is never overwritten.</p>
+    </section>
+    <section class="memory-list">
+      {{range .Memories}}
+      <article class="memory-card">
+        <div class="memory-meta">
+          <span class="status status-{{.Lifecycle}}">{{.Lifecycle}}</span>
+          <span>{{.Kind}}</span><span>{{.Scope}}{{if .ScopeKey}} · {{.ScopeKey}}{{end}}</span>
+        </div>
+        <h3>{{.Title}}</h3>
+        <p>{{.Content}}</p>
+        <dl>
+          <div><dt>Truth</dt><dd>{{printf "%.2f" .TruthScore}}</dd></div>
+          <div><dt>Utility</dt><dd>{{printf "%.2f" .UtilityScore}}</dd></div>
+          <div><dt>Created by</dt><dd>{{.CreatedBy}}</dd></div>
+          <div><dt>Source</dt><dd>{{if .SourceRef}}{{.SourceRef}}{{else}}—{{end}}</dd></div>
+        </dl>
+        {{if or .CanApprove .CanPromote .CanReject .CanArchive}}
+        <form method="post" action="/ui/memories/{{.ID}}/review" class="review-form">
+          <input name="reason" placeholder="Review reason (optional)" aria-label="Review reason">
+          <div class="actions">
+            {{if .CanApprove}}<button name="decision" value="approve" type="submit">Approve</button>{{end}}
+            {{if .CanPromote}}<button name="decision" value="promote" type="submit">Promote</button>{{end}}
+            {{if .CanReject}}<button class="danger" name="decision" value="reject" type="submit">Reject</button>{{end}}
+            {{if .CanArchive}}<button class="quiet" name="decision" value="archive" type="submit">Archive</button>{{end}}
+          </div>
+        </form>
+        {{end}}
+      </article>
+      {{else}}
+      <div class="empty"><h3>No memory yet</h3><p>Connect an agent or import a Holographic database to begin.</p></div>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>

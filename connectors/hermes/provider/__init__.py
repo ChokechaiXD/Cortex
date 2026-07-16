@@ -1,0 +1,252 @@
+"""Hermes memory-provider adapter for the standalone Cortex service."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, List
+
+from agent.memory_provider import MemoryProvider
+from tools.registry import tool_error
+
+from .client import CortexClient, CortexError
+
+logger = logging.getLogger(__name__)
+
+CONFIG_NAME = "cortex.json"
+
+
+REMEMBER_SCHEMA = {
+    "name": "cortex_remember",
+    "description": "Store a durable lesson in Cortex. New memories are candidates until reviewed.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "kind": {
+                "type": "string",
+                "enum": ["fact", "preference", "decision", "failed_attempt", "solution", "project_state"],
+            },
+            "scope": {"type": "string", "enum": ["global", "project", "domain", "private"]},
+            "scope_key": {"type": "string"},
+            "memory_key": {"type": "string", "description": "Stable dotted key for deduplication and review."},
+            "title": {"type": "string"},
+            "content": {"type": "string"},
+            "tags": {"type": "array", "items": {"type": "string"}},
+            "source_ref": {"type": "string", "description": "Optional file, commit, URL, or artifact reference."},
+        },
+        "required": ["kind", "scope", "memory_key", "title", "content"],
+    },
+}
+
+RECALL_SCHEMA = {
+    "name": "cortex_recall",
+    "description": "Search reviewed shared memory and relevant private memory.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "project": {"type": "string"},
+            "domain": {"type": "string"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+            "include_candidates": {"type": "boolean", "description": "Inspection only; candidates are excluded by default."},
+        },
+        "required": ["query"],
+    },
+}
+
+FEEDBACK_SCHEMA = {
+    "name": "cortex_feedback",
+    "description": "Report whether a recalled memory was true, useful, or harmful.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "memory_id": {"type": "string"},
+            "outcome": {
+                "type": "string",
+                "enum": ["confirmed", "contradicted", "helpful", "unhelpful", "applied"],
+            },
+            "reason": {"type": "string"},
+        },
+        "required": ["memory_id", "outcome"],
+    },
+}
+
+REVIEW_SCHEMA = {
+    "name": "cortex_review",
+    "description": "Governor-only lifecycle review for a Cortex memory.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "memory_id": {"type": "string"},
+            "decision": {"type": "string", "enum": ["approve", "promote", "reject", "archive"]},
+            "reason": {"type": "string"},
+        },
+        "required": ["memory_id", "decision"],
+    },
+}
+
+
+class CortexMemoryProvider(MemoryProvider):
+    def __init__(self, config: dict[str, Any] | None = None):
+        self._config = config or {}
+        self._client: CortexClient | None = None
+        self._session_id = ""
+        self._agent_id = ""
+
+    @property
+    def name(self) -> str:
+        return "cortex"
+
+    def is_available(self) -> bool:
+        config = self._config or _load_config()
+        return bool(config.get("url") and config.get("token"))
+
+    def initialize(self, session_id: str, **kwargs) -> None:
+        hermes_home = str(kwargs.get("hermes_home") or "")
+        config = dict(self._config or _load_config(hermes_home))
+        self._session_id = session_id
+        self._agent_id = str(config.get("agent_id") or kwargs.get("agent_identity") or "").strip()
+        self._config = config
+        self._client = CortexClient(
+            str(config.get("url") or "http://127.0.0.1:7777"),
+            str(config.get("token") or ""),
+            timeout=float(config.get("timeout_seconds") or 2.0),
+        )
+
+    def get_config_schema(self) -> List[Dict[str, Any]]:
+        return [
+            {"key": "url", "description": "Cortex server URL", "default": "http://127.0.0.1:7777"},
+            {
+                "key": "token",
+                "description": "Cortex agent token",
+                "secret": True,
+                "required": True,
+                "env_var": "CORTEX_TOKEN",
+            },
+            {"key": "agent_id", "description": "Stable Cortex agent id", "required": True},
+        ]
+
+    def save_config(self, values: Dict[str, Any], hermes_home: str) -> None:
+        path = Path(hermes_home) / CONFIG_NAME
+        existing = _read_json(path)
+        existing.update(values)
+        path.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    def system_prompt_block(self) -> str:
+        if not self._client:
+            return ""
+        return (
+            "# Cortex Shared Memory\n"
+            "Use cortex_recall before repeating prior project work. Store verified lessons, decisions, "
+            "failed attempts, and solutions with cortex_remember. New records are candidates; do not "
+            "treat them as shared truth until reviewed. Report outcomes with cortex_feedback."
+        )
+
+    def prefetch(self, query: str, *, session_id: str = "") -> str:
+        if not self._client or not query.strip():
+            return ""
+        payload = {
+            "text": query,
+            "project": self._config.get("default_project", ""),
+            "domain": self._config.get("default_domain", ""),
+            "limit": int(self._config.get("prefetch_limit") or 5),
+        }
+        try:
+            result = self._client.recall(payload)
+        except CortexError as exc:
+            logger.debug("Cortex prefetch failed: %s", exc)
+            return ""
+        return _format_recall(result)
+
+    def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages=None) -> None:
+        # ponytail: raw-turn mirroring is intentionally omitted; add an explicit extractor adapter when needed.
+        return None
+
+    def on_session_switch(self, new_session_id: str, **kwargs) -> None:
+        self._session_id = new_session_id
+
+    def get_tool_schemas(self) -> List[Dict[str, Any]]:
+        return [REMEMBER_SCHEMA, RECALL_SCHEMA, FEEDBACK_SCHEMA, REVIEW_SCHEMA]
+
+    def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
+        if not self._client:
+            return tool_error("Cortex is not initialized")
+        try:
+            if tool_name == "cortex_remember":
+                payload = dict(args)
+                payload["session_id"] = self._session_id
+                payload.setdefault("scope_key", "")
+                return json.dumps(self._client.remember(payload), ensure_ascii=False)
+            if tool_name == "cortex_recall":
+                payload = {
+                    "text": str(args.get("query") or ""),
+                    "project": str(args.get("project") or self._config.get("default_project") or ""),
+                    "domain": str(args.get("domain") or self._config.get("default_domain") or ""),
+                    "limit": int(args.get("limit") or 5),
+                    "include_candidates": bool(args.get("include_candidates", False)),
+                    "session_id": self._session_id,
+                }
+                return json.dumps(self._client.recall(payload), ensure_ascii=False)
+            if tool_name == "cortex_feedback":
+                memory_id = str(args.get("memory_id") or "").strip()
+                payload = {"outcome": args.get("outcome"), "reason": args.get("reason", ""), "session_id": self._session_id}
+                return json.dumps(self._client.feedback(memory_id, payload), ensure_ascii=False)
+            if tool_name == "cortex_review":
+                memory_id = str(args.get("memory_id") or "").strip()
+                payload = {"decision": args.get("decision"), "reason": args.get("reason", "")}
+                return json.dumps(self._client.review(memory_id, payload), ensure_ascii=False)
+        except (CortexError, ValueError, TypeError) as exc:
+            return tool_error(str(exc))
+        return tool_error(f"Unknown tool: {tool_name}")
+
+
+def _load_config(hermes_home: str = "") -> dict[str, Any]:
+    config: dict[str, Any] = {}
+    if not hermes_home:
+        try:
+            from hermes_constants import get_hermes_home
+
+            hermes_home = str(get_hermes_home())
+        except Exception:
+            hermes_home = ""
+    if hermes_home:
+        config.update(_read_json(Path(hermes_home) / CONFIG_NAME))
+    if os.environ.get("CORTEX_URL"):
+        config["url"] = os.environ["CORTEX_URL"]
+    if os.environ.get("CORTEX_TOKEN"):
+        config["token"] = os.environ["CORTEX_TOKEN"]
+    if os.environ.get("CORTEX_AGENT_ID"):
+        config["agent_id"] = os.environ["CORTEX_AGENT_ID"]
+    return config
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8-sig"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _format_recall(result: dict[str, Any]) -> str:
+    items = result.get("items") or []
+    if not items:
+        return ""
+    lines = []
+    for item in items:
+        memory = item.get("memory") or {}
+        lines.append(
+            f"- [{memory.get('kind', 'memory')}] {memory.get('content', '')} "
+            f"(id={memory.get('id', '')}, truth={memory.get('truth_score', 0):.2f}, "
+            f"utility={memory.get('utility_score', 0):.2f})"
+        )
+    return "## Cortex Recall\n" + "\n".join(lines)
+
+
+def register(ctx) -> None:
+    ctx.register_memory_provider(CortexMemoryProvider())
+
