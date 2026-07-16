@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"cortex.local/cortex/internal/controlcenter"
 	"cortex.local/cortex/internal/cortex"
 )
 
@@ -28,6 +29,17 @@ type dashboardView struct {
 	Active    int
 	Canonical int
 	Memories  []dashboardMemory
+	System    *dashboardSystem
+	SystemErr string
+}
+
+type dashboardSystem struct {
+	Version string
+	Listen  string
+	PID     int
+	DataDir string
+	Uptime  string
+	Pending controlcenter.Action
 }
 
 type dashboardMemory struct {
@@ -85,9 +97,72 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		item.CanSupersede = memory.Lifecycle != cortex.LifecycleSuperseded && memory.Lifecycle != cortex.LifecycleArchived
 		view.Memories = append(view.Memories, item)
 	}
+	if server.control != nil {
+		status, statusErr := server.control.Status(request.Context())
+		if statusErr != nil {
+			view.SystemErr = statusErr.Error()
+		} else {
+			view.System = &dashboardSystem{
+				Version: status.Version, Listen: status.Listen, PID: status.PID,
+				DataDir: status.DataDir, Uptime: status.Uptime.Round(time.Second).String(), Pending: status.Pending,
+			}
+		}
+	}
 	writer.Header().Set("Cache-Control", "no-store")
 	if err := dashboardTemplates.ExecuteTemplate(writer, "dashboard.html", view); err != nil {
 		http.Error(writer, "render dashboard", http.StatusInternalServerError)
+	}
+}
+
+type systemActionView struct {
+	Title   string
+	Message string
+	Restart bool
+}
+
+func (server *Server) systemAction(writer http.ResponseWriter, request *http.Request) {
+	setDashboardHeaders(writer)
+	_, session, ok := server.sessions.fromRequest(request)
+	if !ok {
+		http.Redirect(writer, request, "/", http.StatusSeeOther)
+		return
+	}
+	if server.control == nil || !server.hub.CanGovern(session.AgentID) {
+		http.Error(writer, "system control is not permitted", http.StatusForbidden)
+		return
+	}
+	request.Body = http.MaxBytesReader(writer, request.Body, 4096)
+	if err := request.ParseForm(); err != nil {
+		http.Error(writer, "invalid system action", http.StatusBadRequest)
+		return
+	}
+	if !validCSRF(session.CSRFToken, request.FormValue("csrf")) {
+		http.Error(writer, "invalid csrf token", http.StatusForbidden)
+		return
+	}
+	action := controlcenter.Action(request.FormValue("action"))
+	view := systemActionView{}
+	switch action {
+	case controlcenter.ActionRestart:
+		view = systemActionView{Title: "Restarting Cortex", Message: "Cortex is reopening on the same local port.", Restart: true}
+	case controlcenter.ActionStop:
+		if request.FormValue("confirm") != "stop" {
+			http.Error(writer, "stop confirmation is required", http.StatusBadRequest)
+			return
+		}
+		view = systemActionView{Title: "Cortex is stopping", Message: "Use Cortex Dashboard from the Start menu to open it again."}
+	default:
+		http.Error(writer, "unknown system action", http.StatusBadRequest)
+		return
+	}
+	if err := server.control.Request(action); err != nil {
+		http.Error(writer, "system action already pending", http.StatusConflict)
+		return
+	}
+	writer.Header().Set("Cache-Control", "no-store")
+	writer.WriteHeader(http.StatusAccepted)
+	if err := dashboardTemplates.ExecuteTemplate(writer, "system_action.html", view); err != nil {
+		return
 	}
 }
 

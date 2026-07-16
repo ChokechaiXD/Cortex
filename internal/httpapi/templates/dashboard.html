@@ -15,6 +15,29 @@
     <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">Sign out · {{.AgentID}}</button></form>
   </header>
   <main>
+    {{if .System}}
+    <section class="system-panel" aria-labelledby="system-title">
+      <div class="system-copy">
+        <p class="eyebrow">SYSTEM CONTROL</p>
+        <h2 id="system-title">System control</h2>
+        <p class="system-state"><span aria-hidden="true"></span>Running · {{.System.Listen}}</p>
+        <p class="muted">Version {{.System.Version}} · PID {{.System.PID}} · up {{.System.Uptime}}</p>
+      </div>
+      <div class="system-actions">
+        <form method="post" action="/ui/system/action">
+          <input type="hidden" name="csrf" value="{{.CSRFToken}}">
+          <button class="quiet" name="action" value="restart" type="submit">Restart Cortex</button>
+        </form>
+        <form method="post" action="/ui/system/action" class="stop-form">
+          <input type="hidden" name="csrf" value="{{.CSRFToken}}">
+          <label><input type="checkbox" name="confirm" value="stop" required> Confirm stop</label>
+          <button class="danger" name="action" value="stop" type="submit">Stop Cortex</button>
+        </form>
+      </div>
+    </section>
+    {{else if .SystemErr}}
+    <p class="notice" role="alert">System status unavailable: {{.SystemErr}}</p>
+    {{end}}
     <section class="stats" aria-label="Memory overview">
       <article><strong>{{.Total}}</strong><span>Total</span></article>
       <article><strong>{{.Candidate}}</strong><span>Waiting review</span></article>

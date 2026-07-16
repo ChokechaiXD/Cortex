@@ -1,11 +1,13 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"net/http"
 	"strings"
 
+	"cortex.local/cortex/internal/controlcenter"
 	"cortex.local/cortex/internal/cortex"
 )
 
@@ -13,16 +15,27 @@ type Server struct {
 	hub      *cortex.Hub
 	auth     Authenticator
 	sessions *dashboardSessions
+	control  runtimeControl
 }
 
 func New(hub *cortex.Hub, auth Authenticator) http.Handler {
-	server := &Server{hub: hub, auth: auth, sessions: newDashboardSessions()}
+	return NewWithControl(hub, auth, nil)
+}
+
+type runtimeControl interface {
+	Status(context.Context) (controlcenter.Status, error)
+	Request(controlcenter.Action) error
+}
+
+func NewWithControl(hub *cortex.Hub, auth Authenticator, control runtimeControl) http.Handler {
+	server := &Server{hub: hub, auth: auth, sessions: newDashboardSessions(), control: control}
 	mux := http.NewServeMux()
 	staticFiles, _ := fs.Sub(dashboardAssets, "static")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
 	mux.HandleFunc("GET /", server.dashboard)
 	mux.HandleFunc("POST /login", server.login)
 	mux.HandleFunc("POST /logout", server.logout)
+	mux.HandleFunc("POST /ui/system/action", server.systemAction)
 	mux.HandleFunc("GET /ui/memories/{memoryID}", server.dashboardDetail)
 	mux.HandleFunc("POST /ui/memories/{memoryID}/review", server.dashboardReview)
 	mux.HandleFunc("GET /v1/health", server.health)

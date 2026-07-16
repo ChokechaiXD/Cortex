@@ -39,3 +39,7 @@ func (hub *Hub) Close() error {
 func (hub *Hub) isAdmin(agentID string) bool {
 	return slices.Contains(hub.adminAgents, agentID)
 }
+
+func (hub *Hub) CanGovern(agentID string) bool {
+	return hub.isAdmin(agentID)
+}

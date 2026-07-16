@@ -13,6 +13,7 @@ import (
 
 	"cortex.local/cortex/internal/autostart"
 	"cortex.local/cortex/internal/config"
+	"cortex.local/cortex/internal/controlcenter"
 	_ "modernc.org/sqlite"
 )
 
@@ -137,6 +138,22 @@ func TestUnknownCommandFails(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"unknown"}, &stdout, &stderr); code == 0 {
 		t.Fatalf("unknown command succeeded: stdout=%s", stdout.String())
+	}
+}
+
+func TestServeControlLoopReopensOnlyForRestart(t *testing.T) {
+	t.Parallel()
+
+	cycles := 0
+	err := runServeControlLoop(func() (controlcenter.Action, error) {
+		cycles++
+		if cycles == 1 {
+			return controlcenter.ActionRestart, nil
+		}
+		return controlcenter.ActionStop, nil
+	})
+	if err != nil || cycles != 2 {
+		t.Fatalf("control loop cycles=%d err=%v", cycles, err)
 	}
 }
 

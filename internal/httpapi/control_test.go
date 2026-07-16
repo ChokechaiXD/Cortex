@@ -1,0 +1,104 @@
+package httpapi
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+
+	"cortex.local/cortex/internal/controlcenter"
+	"cortex.local/cortex/internal/cortex"
+)
+
+type fakeControlCenter struct {
+	status    controlcenter.Status
+	requested []controlcenter.Action
+}
+
+func (fake *fakeControlCenter) Status(context.Context) (controlcenter.Status, error) {
+	return fake.status, nil
+}
+
+func (fake *fakeControlCenter) Request(action controlcenter.Action) error {
+	fake.requested = append(fake.requested, action)
+	return nil
+}
+
+func TestDashboardShowsRuntimeAndSafelyRequestsRestartOrStop(t *testing.T) {
+	t.Parallel()
+
+	hub, err := cortex.Open(cortex.Config{
+		DatabasePath: filepath.Join(t.TempDir(), "cortex.db"),
+		AdminAgents:  []string{"mika"},
+	})
+	if err != nil {
+		t.Fatalf("open Cortex: %v", err)
+	}
+	t.Cleanup(func() { _ = hub.Close() })
+	control := &fakeControlCenter{status: controlcenter.Status{
+		Running: true, Version: "0.2.0", Listen: "127.0.0.1:7777", Port: 7777,
+		PID: 4242, DataDir: `C:\Cortex`, Uptime: 2_000_000_000,
+	}}
+	handler := NewWithControl(hub, StaticAuthenticator{"mika-token": "mika"}, control)
+
+	loginForm := url.Values{"token": {"mika-token"}}
+	loginRequest := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(loginForm.Encode()))
+	loginRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	login := httptest.NewRecorder()
+	handler.ServeHTTP(login, loginRequest)
+	cookies := login.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("login cookies = %#v", cookies)
+	}
+
+	dashboardRequest := httptest.NewRequest(http.MethodGet, "/", nil)
+	dashboardRequest.AddCookie(cookies[0])
+	dashboard := httptest.NewRecorder()
+	handler.ServeHTTP(dashboard, dashboardRequest)
+	body := dashboard.Body.String()
+	for _, expected := range []string{"System control", "Running", "127.0.0.1:7777", "PID 4242", "Restart Cortex", "Stop Cortex"} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("dashboard omitted %q: %s", expected, body)
+		}
+	}
+	csrfMatch := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindStringSubmatch(body)
+	if len(csrfMatch) != 2 {
+		t.Fatal("dashboard omitted CSRF token")
+	}
+
+	restartForm := url.Values{"csrf": {csrfMatch[1]}, "action": {"restart"}}
+	restartRequest := httptest.NewRequest(http.MethodPost, "/ui/system/action", strings.NewReader(restartForm.Encode()))
+	restartRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	restartRequest.AddCookie(cookies[0])
+	restart := httptest.NewRecorder()
+	handler.ServeHTTP(restart, restartRequest)
+	if restart.Code != http.StatusAccepted || !strings.Contains(restart.Body.String(), "Restarting Cortex") ||
+		len(control.requested) != 1 || control.requested[0] != controlcenter.ActionRestart {
+		t.Fatalf("restart status=%d body=%s actions=%#v", restart.Code, restart.Body.String(), control.requested)
+	}
+
+	stopForm := url.Values{"csrf": {csrfMatch[1]}, "action": {"stop"}}
+	stopRequest := httptest.NewRequest(http.MethodPost, "/ui/system/action", strings.NewReader(stopForm.Encode()))
+	stopRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	stopRequest.AddCookie(cookies[0])
+	stop := httptest.NewRecorder()
+	handler.ServeHTTP(stop, stopRequest)
+	if stop.Code != http.StatusBadRequest || len(control.requested) != 1 {
+		t.Fatalf("unconfirmed stop status=%d actions=%#v", stop.Code, control.requested)
+	}
+
+	stopForm.Set("confirm", "stop")
+	confirmedRequest := httptest.NewRequest(http.MethodPost, "/ui/system/action", strings.NewReader(stopForm.Encode()))
+	confirmedRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	confirmedRequest.AddCookie(cookies[0])
+	confirmed := httptest.NewRecorder()
+	handler.ServeHTTP(confirmed, confirmedRequest)
+	if confirmed.Code != http.StatusAccepted || !strings.Contains(confirmed.Body.String(), "Cortex is stopping") ||
+		len(control.requested) != 2 || control.requested[1] != controlcenter.ActionStop {
+		t.Fatalf("confirmed stop status=%d body=%s actions=%#v", confirmed.Code, confirmed.Body.String(), control.requested)
+	}
+}

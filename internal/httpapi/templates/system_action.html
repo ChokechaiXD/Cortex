@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{if .Restart}}<meta http-equiv="refresh" content="2;url=/">{{end}}
+  <title>Cortex · {{.Title}}</title>
+  <link rel="stylesheet" href="/static/cortex.css">
+</head>
+<body class="login-shell">
+  <main class="login-card" role="status">
+    <p class="eyebrow">LOCAL CONTROL</p>
+    <h1>{{.Title}}</h1>
+    <p class="muted">{{.Message}}</p>
+    {{if .Restart}}<p><a href="/">Return to dashboard</a></p>{{end}}
+  </main>
+</body>
+</html>
