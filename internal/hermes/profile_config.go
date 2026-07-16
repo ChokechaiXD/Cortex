@@ -37,11 +37,24 @@ func renderActivatedConfig(home string) ([]byte, error) {
 		memory.Content = nil
 	}
 	setScalar(memory, "provider", "cortex")
+	if plugins := mappingValue(root, "plugins"); plugins != nil && plugins.Kind == yaml.MappingNode {
+		removeMapping(plugins, "hermes-memory-store")
+	}
 	encoded, err := yaml.Marshal(document)
 	if err != nil {
 		return nil, fmt.Errorf("encode Hermes config: %w", err)
 	}
 	return encoded, nil
+}
+
+func removeMapping(mapping *yaml.Node, key string) {
+	for index := 0; index+1 < len(mapping.Content); index += 2 {
+		if mapping.Content[index].Value != key {
+			continue
+		}
+		mapping.Content = append(mapping.Content[:index], mapping.Content[index+2:]...)
+		return
+	}
 }
 
 func mappingValue(mapping *yaml.Node, key string) *yaml.Node {

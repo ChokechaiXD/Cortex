@@ -23,7 +23,7 @@ func TestSyncInstallsAndActivatesAllHermesProfiles(t *testing.T) {
 			t.Fatalf("create profile: %v", err)
 		}
 	}
-	originalConfig := []byte("model:\n  provider: local\nmemory:\n  provider: holographic\ncustom: keep\n")
+	originalConfig := []byte("model:\n  provider: local\nmemory:\n  provider: holographic\nplugins:\n  hermes-memory-store:\n    db_path: legacy.db\n  keep-plugin:\n    enabled: true\ncustom: keep\n")
 	if err := os.MkdirAll(hermesHome, 0o700); err != nil {
 		t.Fatalf("create Hermes home: %v", err)
 	}
@@ -90,6 +90,7 @@ func TestSyncInstallsAndActivatesAllHermesProfiles(t *testing.T) {
 		}
 		assertProvider(t, filepath.Join(home, "config.yaml"), "cortex")
 	}
+	assertLegacyProviderConfigRemoved(t, filepath.Join(hermesHome, "config.yaml"))
 
 	legacy, err := os.ReadFile(legacyDB)
 	if err != nil || string(legacy) != "legacy-data" {
@@ -196,5 +197,27 @@ func assertProvider(t *testing.T, path, want string) {
 	memory, ok := decoded["memory"].(map[string]any)
 	if !ok || memory["provider"] != want {
 		t.Fatalf("memory provider in %s = %#v, want %q", path, decoded["memory"], want)
+	}
+}
+
+func assertLegacyProviderConfigRemoved(t *testing.T, path string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read Hermes config %s: %v", path, err)
+	}
+	var decoded map[string]any
+	if err := yaml.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decode Hermes config %s: %v", path, err)
+	}
+	plugins, ok := decoded["plugins"].(map[string]any)
+	if !ok {
+		t.Fatalf("plugins in %s = %#v", path, decoded["plugins"])
+	}
+	if _, exists := plugins["hermes-memory-store"]; exists {
+		t.Fatalf("legacy hermes-memory-store config remains in %s", path)
+	}
+	if _, exists := plugins["keep-plugin"]; !exists {
+		t.Fatalf("unrelated plugin config was removed from %s", path)
 	}
 }
