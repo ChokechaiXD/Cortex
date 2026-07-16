@@ -36,6 +36,9 @@ func validateRecall(query RecallQuery) error {
 	if query.Limit < 0 || query.Limit > 50 {
 		return fmt.Errorf("%w: limit must be between 1 and 50", ErrInvalidInput)
 	}
+	if query.TokenBudget != 0 && (query.TokenBudget < 100 || query.TokenBudget > 4000) {
+		return fmt.Errorf("%w: token_budget must be between 100 and 4000", ErrInvalidInput)
+	}
 	return nil
 }
 
@@ -75,6 +78,16 @@ func validKind(kind MemoryKind) bool {
 func validScope(scope Scope) bool {
 	switch scope {
 	case ScopeGlobal, ScopeProject, ScopeDomain, ScopePrivate:
+		return true
+	default:
+		return false
+	}
+}
+
+func validLifecycle(lifecycle Lifecycle) bool {
+	switch lifecycle {
+	case LifecycleCandidate, LifecycleActive, LifecycleCanonical,
+		LifecycleRejected, LifecycleSuperseded, LifecycleArchived:
 		return true
 	default:
 		return false

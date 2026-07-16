@@ -132,6 +132,7 @@ type RecallQuery struct {
 	Project           string `json:"project,omitempty"`
 	Domain            string `json:"domain,omitempty"`
 	Limit             int    `json:"limit,omitempty"`
+	TokenBudget       int    `json:"token_budget,omitempty"`
 	IncludeCandidates bool   `json:"include_candidates,omitempty"`
 }
 
@@ -141,8 +142,11 @@ type RecallItem struct {
 }
 
 type RecallResult struct {
-	ID    string       `json:"id"`
-	Items []RecallItem `json:"items"`
+	ID              string       `json:"id"`
+	Items           []RecallItem `json:"items"`
+	TokenBudget     int          `json:"token_budget,omitempty"`
+	EstimatedTokens int          `json:"estimated_tokens,omitempty"`
+	Truncated       bool         `json:"truncated,omitempty"`
 }
 
 type FeedbackCommand struct {
@@ -170,6 +174,22 @@ type HistoryQuery struct {
 type Overview struct {
 	Counts   map[Lifecycle]int `json:"counts"`
 	Memories []Memory          `json:"memories"`
+}
+
+type BrowseQuery struct {
+	AgentID   string
+	Text      string
+	Lifecycle Lifecycle
+	Kind      MemoryKind
+	Scope     Scope
+	ScopeKey  string
+	CreatedBy string
+	Limit     int
+}
+
+type BrowseResult struct {
+	Total    int      `json:"total"`
+	Memories []Memory `json:"memories"`
 }
 
 type Event struct {

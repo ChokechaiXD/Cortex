@@ -50,6 +50,12 @@ RECALL_SCHEMA = {
             "project": {"type": "string"},
             "domain": {"type": "string"},
             "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+            "token_budget": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 4000,
+                "description": "Maximum estimated context tokens returned by Cortex.",
+            },
             "include_candidates": {"type": "boolean", "description": "Inspection only; candidates are excluded by default."},
         },
         "required": ["query"],
@@ -126,6 +132,16 @@ class CortexMemoryProvider(MemoryProvider):
                 "env_var": "CORTEX_TOKEN",
             },
             {"key": "agent_id", "description": "Stable Cortex agent id", "required": True},
+            {
+                "key": "prefetch_token_budget",
+                "description": "Maximum estimated tokens injected automatically",
+                "default": 700,
+            },
+            {
+                "key": "recall_token_budget",
+                "description": "Default maximum estimated tokens returned by cortex_recall",
+                "default": 1200,
+            },
         ]
 
     def save_config(self, values: Dict[str, Any], hermes_home: str) -> None:
@@ -151,7 +167,10 @@ class CortexMemoryProvider(MemoryProvider):
             "text": query,
             "project": self._config.get("default_project", ""),
             "domain": self._config.get("default_domain", ""),
-            "limit": int(self._config.get("prefetch_limit") or 5),
+            "limit": _bounded_int(self._config.get("prefetch_limit"), 5, 1, 20),
+            "token_budget": _bounded_int(
+                self._config.get("prefetch_token_budget"), 700, 100, 4000
+            ),
         }
         try:
             result = self._client.recall(payload)
@@ -186,7 +205,13 @@ class CortexMemoryProvider(MemoryProvider):
                     "text": str(args.get("query") or ""),
                     "project": str(args.get("project") or self._config.get("default_project") or ""),
                     "domain": str(args.get("domain") or self._config.get("default_domain") or ""),
-                    "limit": int(args.get("limit") or 5),
+                    "limit": _bounded_int(args.get("limit"), 5, 1, 20),
+                    "token_budget": _bounded_int(
+                        args.get("token_budget", self._config.get("recall_token_budget")),
+                        1200,
+                        100,
+                        4000,
+                    ),
                     "include_candidates": bool(args.get("include_candidates", False)),
                     "session_id": self._session_id,
                 }
@@ -246,7 +271,23 @@ def _format_recall(result: dict[str, Any]) -> str:
             f"(id={memory.get('id', '')}, truth={memory.get('truth_score', 0):.2f}, "
             f"utility={memory.get('utility_score', 0):.2f})"
         )
-    return "## Cortex Recall\n" + "\n".join(lines)
+    heading = "## Cortex Recall"
+    token_budget = int(result.get("token_budget") or 0)
+    estimated_tokens = int(result.get("estimated_tokens") or 0)
+    if token_budget:
+        suffix = f"{estimated_tokens}/{token_budget} tokens"
+        if result.get("truncated"):
+            suffix += ", trimmed"
+        heading += f" ({suffix})"
+    return heading + "\n" + "\n".join(lines)
+
+
+def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
 
 
 def register(ctx) -> None:

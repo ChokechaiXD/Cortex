@@ -29,8 +29,19 @@ type dashboardView struct {
 	Active    int
 	Canonical int
 	Memories  []dashboardMemory
+	Filters   dashboardFilters
+	Matched   int
 	System    *dashboardSystem
 	SystemErr string
+}
+
+type dashboardFilters struct {
+	Text      string
+	Lifecycle string
+	Kind      string
+	Scope     string
+	ScopeKey  string
+	CreatedBy string
 }
 
 type dashboardSystem struct {
@@ -73,7 +84,24 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		}
 		return
 	}
-	overview, err := server.hub.Overview(request.Context(), session.AgentID, 200)
+	filters := dashboardFilters{
+		Text:      strings.TrimSpace(request.URL.Query().Get("q")),
+		Lifecycle: strings.TrimSpace(request.URL.Query().Get("lifecycle")),
+		Kind:      strings.TrimSpace(request.URL.Query().Get("kind")),
+		Scope:     strings.TrimSpace(request.URL.Query().Get("scope")),
+		ScopeKey:  strings.TrimSpace(request.URL.Query().Get("scope_key")),
+		CreatedBy: strings.TrimSpace(request.URL.Query().Get("created_by")),
+	}
+	counts, err := server.hub.Counts(request.Context(), session.AgentID)
+	if err != nil {
+		writeDomainError(writer, err)
+		return
+	}
+	browsed, err := server.hub.Browse(request.Context(), cortex.BrowseQuery{
+		AgentID: session.AgentID, Text: filters.Text, Lifecycle: cortex.Lifecycle(filters.Lifecycle),
+		Kind: cortex.MemoryKind(filters.Kind), Scope: cortex.Scope(filters.Scope), ScopeKey: filters.ScopeKey,
+		CreatedBy: filters.CreatedBy, Limit: 200,
+	})
 	if err != nil {
 		writeDomainError(writer, err)
 		return
@@ -81,15 +109,16 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 	view := dashboardView{
 		AgentID:   session.AgentID,
 		CSRFToken: session.CSRFToken,
-		Candidate: overview.Counts[cortex.LifecycleCandidate],
-		Active:    overview.Counts[cortex.LifecycleActive],
-		Canonical: overview.Counts[cortex.LifecycleCanonical],
-		Memories:  make([]dashboardMemory, 0, len(overview.Memories)),
+		Candidate: counts[cortex.LifecycleCandidate],
+		Active:    counts[cortex.LifecycleActive],
+		Canonical: counts[cortex.LifecycleCanonical],
+		Memories:  make([]dashboardMemory, 0, len(browsed.Memories)),
+		Filters:   filters, Matched: browsed.Total,
 	}
-	for _, count := range overview.Counts {
+	for _, count := range counts {
 		view.Total += count
 	}
-	for _, memory := range overview.Memories {
+	for _, memory := range browsed.Memories {
 		item := dashboardMemory{Memory: memory, CanArchive: memory.Lifecycle != cortex.LifecycleArchived}
 		item.CanApprove = memory.Lifecycle == cortex.LifecycleCandidate
 		item.CanPromote = memory.Lifecycle == cortex.LifecycleActive

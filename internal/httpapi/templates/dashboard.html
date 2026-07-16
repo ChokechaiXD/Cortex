@@ -44,10 +44,41 @@
       <article><strong>{{.Active}}</strong><span>Active</span></article>
       <article><strong>{{.Canonical}}</strong><span>Canonical</span></article>
     </section>
-    <section class="section-head">
-      <div><p class="eyebrow">AUDITABLE MEMORY</p><h2>Latest records</h2></div>
-      <p class="muted">Truth and utility are tracked separately. History is never overwritten.</p>
+    <section class="section-head explorer-head">
+      <div><p class="eyebrow">AUDITABLE SECOND BRAIN</p><h2>Memory explorer</h2></div>
+      <p class="muted">{{.Matched}} matching {{if eq .Matched 1}}record{{else}}records{{end}} · truth and utility stay separate.</p>
     </section>
+    <form class="explorer" method="get" action="/" aria-label="Filter memories">
+      <label class="search-field"><span>Search</span><input type="search" name="q" value="{{.Filters.Text}}" placeholder="Decision, lesson, failure, project…"></label>
+      <label><span>Lifecycle</span><select name="lifecycle">
+        <option value="">Any</option>
+        <option value="candidate" {{if eq .Filters.Lifecycle "candidate"}}selected{{end}}>Candidate</option>
+        <option value="active" {{if eq .Filters.Lifecycle "active"}}selected{{end}}>Active</option>
+        <option value="canonical" {{if eq .Filters.Lifecycle "canonical"}}selected{{end}}>Canonical</option>
+        <option value="rejected" {{if eq .Filters.Lifecycle "rejected"}}selected{{end}}>Rejected</option>
+        <option value="superseded" {{if eq .Filters.Lifecycle "superseded"}}selected{{end}}>Superseded</option>
+        <option value="archived" {{if eq .Filters.Lifecycle "archived"}}selected{{end}}>Archived</option>
+      </select></label>
+      <label><span>Kind</span><select name="kind">
+        <option value="">Any</option>
+        <option value="fact" {{if eq .Filters.Kind "fact"}}selected{{end}}>Fact</option>
+        <option value="preference" {{if eq .Filters.Kind "preference"}}selected{{end}}>Preference</option>
+        <option value="decision" {{if eq .Filters.Kind "decision"}}selected{{end}}>Decision</option>
+        <option value="failed_attempt" {{if eq .Filters.Kind "failed_attempt"}}selected{{end}}>Failed attempt</option>
+        <option value="solution" {{if eq .Filters.Kind "solution"}}selected{{end}}>Solution</option>
+        <option value="project_state" {{if eq .Filters.Kind "project_state"}}selected{{end}}>Project state</option>
+      </select></label>
+      <label><span>Scope</span><select name="scope">
+        <option value="">Any</option>
+        <option value="global" {{if eq .Filters.Scope "global"}}selected{{end}}>Global</option>
+        <option value="project" {{if eq .Filters.Scope "project"}}selected{{end}}>Project</option>
+        <option value="domain" {{if eq .Filters.Scope "domain"}}selected{{end}}>Domain</option>
+        <option value="private" {{if eq .Filters.Scope "private"}}selected{{end}}>Private</option>
+      </select></label>
+      <label><span>Scope key</span><input name="scope_key" value="{{.Filters.ScopeKey}}" placeholder="novelclaw or coding"></label>
+      <label><span>Created by</span><input name="created_by" value="{{.Filters.CreatedBy}}" placeholder="sola"></label>
+      <div class="explorer-actions"><button type="submit">Apply filters</button><a class="quiet-link" href="/">Clear</a></div>
+    </form>
     <section class="memory-list">
       {{range .Memories}}
       <article class="memory-card">
@@ -78,7 +109,7 @@
         {{end}}
       </article>
       {{else}}
-      <div class="empty"><h3>No memory yet</h3><p>Connect an agent or import a Holographic database to begin.</p></div>
+      <div class="empty"><h3>No matching memory</h3><p>Adjust the filters or let an agent capture a new lesson.</p></div>
       {{end}}
     </section>
   </main>

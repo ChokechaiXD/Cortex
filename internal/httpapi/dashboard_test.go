@@ -38,6 +38,14 @@ func TestDashboardLoginAndReview(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create dashboard candidate: %v", err)
 	}
+	other, err := hub.Remember(context.Background(), cortex.RememberCommand{
+		IdempotencyKey: "dashboard/other-1", Kind: cortex.KindFact, Scope: cortex.ScopeGlobal,
+		MemoryKey: "research.sources", Title: "Unrelated research source",
+		Content: "Research sources should be cited.", AgentID: "nua",
+	})
+	if err != nil {
+		t.Fatalf("create unrelated candidate: %v", err)
+	}
 	handler := New(hub, StaticAuthenticator{"mika-token": "mika"})
 
 	loginPage := httptest.NewRecorder()
@@ -76,6 +84,35 @@ func TestDashboardLoginAndReview(t *testing.T) {
 		t.Fatalf("dashboard did not render a CSRF token: %s", dashboard.Body.String())
 	}
 	csrfToken := csrfMatch[1]
+	filteredRequest := httptest.NewRequest(
+		http.MethodGet,
+		"/?q=canonical+output&lifecycle=candidate&kind=decision&scope=project&scope_key=novelclaw&created_by=sola",
+		nil,
+	)
+	filteredRequest.AddCookie(cookies[0])
+	filtered := httptest.NewRecorder()
+	handler.ServeHTTP(filtered, filteredRequest)
+	filteredBody := filtered.Body.String()
+	for _, expected := range []string{
+		"Memory explorer", "1 matching record", memory.Title,
+		`value="canonical output"`, `value="candidate" selected`, `value="decision" selected`,
+		`value="project" selected`, `value="novelclaw"`, `value="sola"`,
+	} {
+		if filtered.Code != http.StatusOK || !strings.Contains(filteredBody, expected) {
+			t.Fatalf("filtered dashboard omitted %q: status=%d body=%s", expected, filtered.Code, filteredBody)
+		}
+	}
+	if strings.Contains(filteredBody, other.Title) {
+		t.Fatalf("filtered dashboard included unrelated memory: %s", filteredBody)
+	}
+
+	invalidFilter := httptest.NewRequest(http.MethodGet, "/?lifecycle=unknown", nil)
+	invalidFilter.AddCookie(cookies[0])
+	invalid := httptest.NewRecorder()
+	handler.ServeHTTP(invalid, invalidFilter)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid filter status=%d body=%s", invalid.Code, invalid.Body.String())
+	}
 
 	cookieOnlyAPI := httptest.NewRequest(http.MethodGet, "/v1/capabilities", nil)
 	cookieOnlyAPI.AddCookie(cookies[0])

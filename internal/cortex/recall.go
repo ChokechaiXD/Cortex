@@ -3,10 +3,12 @@ package cortex
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var searchToken = regexp.MustCompile(`[\p{L}\p{N}_]+`)
@@ -43,7 +45,10 @@ func (hub *Hub) Recall(ctx context.Context, query RecallQuery) (RecallResult, er
 					visible = append(visible, item)
 				}
 			}
-			stored.Items = visible
+			stored, err = budgetRecallResult(stored.ID, visible, query.TokenBudget)
+			if err != nil {
+				return RecallResult{}, err
+			}
 			return stored, nil
 		}
 	}
@@ -88,7 +93,9 @@ LIMIT 100`, ftsQuery, query.IncludeCandidates,
 		return RecallResult{}, fmt.Errorf("close search results: %w", err)
 	}
 
-	result := RecallResult{ID: recallID, Items: make([]RecallItem, 0, limit)}
+	result := RecallResult{
+		ID: recallID, Items: make([]RecallItem, 0, limit), TokenBudget: query.TokenBudget,
+	}
 	for _, candidate := range ranked {
 		memory, err := getMemory(ctx, tx, candidate.id)
 		if err != nil {
@@ -99,10 +106,19 @@ LIMIT 100`, ftsQuery, query.IncludeCandidates,
 		}
 		textScore := 1 / (1 + max(0, -candidate.rank))
 		score := 0.65*textScore + 0.20*memory.TruthScore + 0.15*memory.UtilityScore
-		result.Items = append(result.Items, RecallItem{Memory: memory, Score: score})
+		added, err := appendRecallItem(&result, RecallItem{Memory: memory, Score: score})
+		if err != nil {
+			return RecallResult{}, err
+		}
+		if !added {
+			continue
+		}
 		if len(result.Items) == limit {
 			break
 		}
+	}
+	if err := finalizeRecallEstimate(&result); err != nil {
+		return RecallResult{}, err
 	}
 	if err := hub.persistRecall(ctx, tx, result, query); err != nil {
 		return RecallResult{}, err
@@ -111,6 +127,68 @@ LIMIT 100`, ftsQuery, query.IncludeCandidates,
 		return RecallResult{}, fmt.Errorf("commit recall: %w", err)
 	}
 	return result, nil
+}
+
+func budgetRecallResult(id string, items []RecallItem, tokenBudget int) (RecallResult, error) {
+	result := RecallResult{ID: id, Items: make([]RecallItem, 0, len(items)), TokenBudget: tokenBudget}
+	for _, item := range items {
+		if _, err := appendRecallItem(&result, item); err != nil {
+			return RecallResult{}, err
+		}
+	}
+	if err := finalizeRecallEstimate(&result); err != nil {
+		return RecallResult{}, err
+	}
+	return result, nil
+}
+
+func appendRecallItem(result *RecallResult, item RecallItem) (bool, error) {
+	if result.TokenBudget == 0 {
+		result.Items = append(result.Items, item)
+		return true, nil
+	}
+	candidate := *result
+	candidate.Items = append(result.Items[:len(result.Items):len(result.Items)], item)
+	tokens, err := estimateRecallResultTokens(candidate)
+	if err != nil {
+		return false, err
+	}
+	if tokens > result.TokenBudget {
+		result.Truncated = true
+		return false, nil
+	}
+	candidate.EstimatedTokens = tokens
+	*result = candidate
+	return true, nil
+}
+
+func finalizeRecallEstimate(result *RecallResult) error {
+	if result.TokenBudget == 0 {
+		return nil
+	}
+	tokens, err := estimateRecallResultTokens(*result)
+	if err != nil {
+		return err
+	}
+	result.EstimatedTokens = tokens
+	return nil
+}
+
+func estimateRecallResultTokens(result RecallResult) (int, error) {
+	estimate := 0
+	for range 4 {
+		result.EstimatedTokens = estimate
+		raw, err := json.Marshal(result)
+		if err != nil {
+			return 0, fmt.Errorf("estimate recall context: %w", err)
+		}
+		next := max((utf8.RuneCount(raw)+1)/2, (len(raw)+3)/4)
+		if next == estimate {
+			return next, nil
+		}
+		estimate = next
+	}
+	return estimate, nil
 }
 
 func (hub *Hub) persistRecall(ctx context.Context, tx *sql.Tx, result RecallResult, query RecallQuery) error {
