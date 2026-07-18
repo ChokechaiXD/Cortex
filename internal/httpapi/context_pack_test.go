@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"cortex.local/cortex/internal/controlplane"
 	"cortex.local/cortex/internal/cortex"
 	"cortex.local/cortex/internal/hope"
 )
@@ -29,8 +28,7 @@ func TestContextPackRoutesAndLearnsSkillOutcome(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("save skill: %v", err)
 	}
-	plane := controlplane.New(hopeHub, nil, nil, nil, nil, nil, nil)
-	handler := NewWithHOPE(memoryHub, StaticAuthenticator{"sora-token": "sora", "nua-token": "nua"}, nil, nil, nil, plane)
+	handler := NewWithSkillMem(memoryHub, StaticAuthenticator{"sora-token": "sora", "nua-token": "nua"}, nil, nil, nil, hopeHub)
 	response := performRequest(t, handler, http.MethodPost, "/v1/context-packs", "sora-token", "pack-1", map[string]any{
 		"text": "design cortex api contract", "project": "cortex", "skill_limit": 3,
 	})

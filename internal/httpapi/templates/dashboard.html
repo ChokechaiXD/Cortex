@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HOPE · Knowledge Center</title>
+  <title>HOPE Mem · Shared Memory</title>
   <link rel="stylesheet" href="/static/cortex.css">
 </head>
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">HOPE KNOWLEDGE</p>
-      <h1>Knowledge Center</h1>
+      <p class="eyebrow">HOPE MEM</p>
+      <h1>Shared Memory</h1>
       <p class="authority-inline">Owner: {{.OwnerName}} | Deputy: {{.DeputyName}} | Session: {{.AgentID}}</p>
     </div>
     <div class="topbar-actions">
-      <a class="mode-link" href="/">กลับ HOPE</a>
+      <a class="mode-link" href="/">HOPE Mem</a>
       {{if .Advanced}}<a class="mode-link" href="/knowledge">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/knowledge?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
       <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">ออกจากระบบ</button></form>
     </div>
@@ -24,7 +24,7 @@
     <section class="system-panel" aria-labelledby="system-title">
       <div class="system-copy">
         <p class="eyebrow">สถานะระบบ</p>
-        <h2 id="system-title">Knowledge Kernel พร้อมใช้งาน</h2>
+        <h2 id="system-title">Memory Kernel พร้อมใช้งาน</h2>
         <p class="system-state"><span aria-hidden="true"></span>กำลังทำงานในเครื่อง</p>
         {{if .Advanced}}<p class="muted">{{.System.Listen}} | Version {{.System.Version}} | PID {{.System.PID}} | เปิดมาแล้ว {{.System.Uptime}}</p>{{end}}
       </div>
@@ -35,12 +35,12 @@
         </form>
         <form method="post" action="/ui/system/action">
           <input type="hidden" name="csrf" value="{{.CSRFToken}}">
-          <button class="quiet" name="action" value="restart" type="submit">เริ่ม HOPE ใหม่</button>
+          <button class="quiet" name="action" value="restart" type="submit">เริ่ม HOPE Mem ใหม่</button>
         </form>
         <form method="post" action="/ui/system/action" class="stop-form">
           <input type="hidden" name="csrf" value="{{.CSRFToken}}">
           <label><input type="checkbox" name="confirm" value="stop" required> ยืนยันการปิด</label>
-          <button class="danger" name="action" value="stop" type="submit">ปิด HOPE</button>
+          <button class="danger" name="action" value="stop" type="submit">ปิด HOPE Mem</button>
         </form>
       </div>
     </section>
@@ -203,7 +203,7 @@
       <div class="advisor-head">
         <div>
           <p class="eyebrow">MODEL REVIEW</p>
-          <h2 id="advisor-title">ให้โมเดลช่วยสรุปเฉพาะเรื่องสำคัญ</h2>
+          <h2 id="advisor-title">ให้โมเดลช่วยตรวจเฉพาะเรื่องสำคัญ</h2>
           {{if .Advisor.Settings.Enabled}}
           <p class="muted">พร้อมใช้เมื่อพี่กดเรียก | {{.Advisor.Settings.Model}} | โมเดลอนุมัติแทนพี่ไม่ได้</p>
           {{else}}
@@ -273,7 +273,7 @@
         </div>
         <a class="quiet-link" href="/knowledge?lifecycle=candidate{{if .Advanced}}&view=advanced{{end}}#candidate-inbox">ดูรายการรอตรวจทั้งหมด</a>
       </div>
-      <p class="muted">HOPE ใช้กฎเบา ๆ แยกข้อมูลนำเข้าตามจุดประสงค์ พี่จึงเลือกตรวจและจัดการเป็นชุดได้โดยไม่เสีย token</p>
+      <p class="muted">HOPE Mem ใช้กฎเบา ๆ แยกข้อมูลนำเข้าตามจุดประสงค์ พี่จึงเลือกตรวจและจัดการเป็นชุดได้โดยไม่เสีย token</p>
       <div class="candidate-groups">
         {{range .CandidateGroups}}
         <a class="candidate-group {{if .Active}}candidate-group-active{{end}}" href="/knowledge?lifecycle=candidate&candidate_group={{.Key}}{{if $.Advanced}}&view=advanced{{end}}#candidate-inbox">
@@ -288,7 +288,7 @@
     {{end}}
 
     <section class="section-head explorer-head">
-      <div><p class="eyebrow">สมองที่สองที่ตรวจสอบย้อนหลังได้</p><h2>คลังความรู้</h2></div>
+      <div><p class="eyebrow">สมองกลางที่ตรวจสอบย้อนหลังได้</p><h2>คลังความรู้</h2></div>
       <p class="muted">พบ {{.Matched}} รายการ ความน่าเชื่อถือและประโยชน์ถูกติดตามแยกกัน</p>
     </section>
     <form class="explorer" method="get" action="/knowledge" aria-label="ค้นหาและกรองความรู้">

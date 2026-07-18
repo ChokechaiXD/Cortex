@@ -1,4 +1,4 @@
-# Cortex Curator
+# HOPE Mem Curator
 
 Curator reduces review work without turning an LLM into the source of truth.
 Its first gate is deterministic, local, and free of API or token cost.
@@ -57,5 +57,5 @@ stored as a second competing source of truth.
 The implemented model advisor can summarize or challenge deterministic
 suggestions after the user explicitly requests it. It sits behind a replaceable
 adapter and can never bypass hard rules. The default remains disabled, and
-Cortex remains fully usable without the adapter, 9Router, an embedding model,
+HOPE Mem remains fully usable without the adapter, 9Router, an embedding model,
 or network access. See [Model advisor](model-advisor.md).

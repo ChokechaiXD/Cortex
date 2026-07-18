@@ -50,7 +50,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(writer io.Writer) {
-	fmt.Fprintln(writer, `HOPE - local Agent Operating Hub powered by Cortex Memory Kernel
+	fmt.Fprintln(writer, `HOPE Mem - local shared memory for agents
 
 Usage:
   cortex init [--data-dir DIR] [--admin AGENT] [--listen ADDRESS]

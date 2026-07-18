@@ -221,6 +221,10 @@ func (hub *Hub) ApplySkillFeedback(ctx context.Context, input SkillFeedback) err
 	return tx.Commit()
 }
 
+func (hub *Hub) ContextSkillFeedback(ctx context.Context, input SkillFeedback) error {
+	return hub.ApplySkillFeedback(ctx, input)
+}
+
 func scopedKey(actorID, requestKey string) string {
 	sum := sha256.Sum256([]byte(actorID + "\x00" + requestKey))
 	return hex.EncodeToString(sum[:])

@@ -1,11 +1,11 @@
-# Cortex model advisor
+# HOPE Mem model advisor
 
 The model advisor is an optional second opinion for the human governor. It is
 not a memory extractor, evidence source, or lifecycle authority.
 
 ## No-code flow
 
-1. Open the Cortex dashboard.
+1. Open the HOPE Mem dashboard.
 2. Expand **Model and token settings** in the second-review panel.
 3. Keep the default loopback endpoint or enter another local OpenAI-compatible
    API base path.
@@ -13,8 +13,8 @@ not a memory extractor, evidence source, or lifecycle authority.
 5. Press **Ask the model to summarize now** only when a second opinion is useful.
 
 The model catalog is fetched on demand and cached in memory for one minute. It
-is never copied into Cortex configuration, so model/provider changes in 9Router
-do not require a Cortex upgrade.
+is never copied into HOPE Mem configuration, so model/provider changes in 9Router
+do not require a HOPE Mem upgrade.
 
 ## Trust boundary
 
@@ -29,7 +29,7 @@ do not require a Cortex upgrade.
 - The result is advice only. It cannot call tools or change lifecycle state.
 
 9Router can still route a request to an external provider if the user configured
-that behavior. Cortex itself connects only to the loopback router endpoint.
+that behavior. HOPE Mem itself connects only to the loopback router endpoint.
 
 ## Cost and effort
 

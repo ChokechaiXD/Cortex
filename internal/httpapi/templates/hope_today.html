@@ -2,11 +2,11 @@
 <section class="mission-hero" aria-labelledby="mission-title">
   <div>
     <p class="eyebrow">SYSTEM READY</p>
-    <h2 id="mission-title">{{if eq .ProblemConnections 0}}พร้อมเริ่มงาน{{else}}ต้องเปิดบาง service{{end}}</h2>
+    <h2 id="mission-title">{{if eq .ProblemConnections 0}}พร้อมใช้งาน{{else}}มี service ที่ควรตรวจ{{end}}</h2>
     <p>HOPE เป็นแผงควบคุมกลาง: เช็คสถานะ กดเปิดตัวจริง และเก็บความรู้เข้าที่เดียว</p>
   </div>
   <div class="mission-scoreboard" aria-label="ภาพรวมระบบ">
-    <a href="/?section=connections"><strong>{{.ReadyConnections}}/{{.TotalConnections}}</strong><span>Services</span></a>
+    <a href="/?section=connections"><strong>{{.ReadyConnections}}/{{.TotalConnections}}</strong><span>External</span></a>
     <a href="/?section=agents"><strong>{{.AgentCount}}</strong><span>Agents</span></a>
     <a href="/?section=projects"><strong>{{.ActiveProjectCount}}</strong><span>Active projects</span></a>
     <a href="/knowledge"><strong>{{.Pending}}</strong><span>To review</span></a>

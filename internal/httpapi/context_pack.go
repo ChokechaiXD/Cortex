@@ -45,6 +45,12 @@ type contextSkillFeedbackRequest struct {
 	Outcome string `json:"outcome"`
 }
 
+type skillMemory interface {
+	RouteSkills(context.Context, hope.RouteRequest) ([]hope.SkillMatch, error)
+	SaveSkillRoute(context.Context, hope.ContextPack) (string, error)
+	ContextSkillFeedback(context.Context, hope.SkillFeedback) error
+}
+
 func (server *Server) contextPack(writer http.ResponseWriter, request *http.Request) {
 	key, ok := idempotencyKey(writer, request)
 	if !ok {
@@ -66,12 +72,13 @@ func (server *Server) contextPack(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 	response := contextPackResponse{Memory: memory, Routing: skillRouteEvidence{Strategy: "deterministic"}}
-	if server.hope != nil {
+	skillMem := server.activeSkillMem()
+	if skillMem != nil {
 		routeLimit := input.SkillLimit
 		if routeLimit < 1 || routeLimit > 5 {
 			routeLimit = 3
 		}
-		matches, routeErr := server.hope.RouteSkills(request.Context(), hope.RouteRequest{
+		matches, routeErr := skillMem.RouteSkills(request.Context(), hope.RouteRequest{
 			Query: input.Text, AgentID: agentID, ProjectID: input.Project, Limit: 6,
 		})
 		if routeErr == nil {
@@ -85,7 +92,7 @@ func (server *Server) contextPack(writer http.ResponseWriter, request *http.Requ
 					Score: match.Score, Reason: match.Reason,
 				})
 			}
-			response.ID, err = server.hope.SaveSkillRoute(request.Context(), hope.ContextPack{
+			response.ID, err = skillMem.SaveSkillRoute(request.Context(), hope.ContextPack{
 				IdempotencyKey: key,
 				AgentID:        agentID,
 				SessionID:      input.SessionID,
@@ -106,7 +113,8 @@ func (server *Server) contextPack(writer http.ResponseWriter, request *http.Requ
 }
 
 func (server *Server) contextSkillFeedback(writer http.ResponseWriter, request *http.Request) {
-	if server.hope == nil {
+	skillMem := server.activeSkillMem()
+	if skillMem == nil {
 		writeAPIError(writer, http.StatusServiceUnavailable, "hope_unavailable", "HOPE is unavailable")
 		return
 	}
@@ -119,17 +127,28 @@ func (server *Server) contextSkillFeedback(writer http.ResponseWriter, request *
 		writeAPIError(writer, http.StatusBadRequest, "invalid_json", err.Error())
 		return
 	}
-	if err := server.hope.ContextSkillFeedback(request.Context(), hope.SkillFeedback{
+	feedback := hope.SkillFeedback{
 		IdempotencyKey: key,
 		PackID:         request.PathValue("packID"),
 		SkillID:        request.PathValue("skillID"),
 		AgentID:        identityFromRequest(request),
 		Outcome:        input.Outcome,
-	}); err != nil {
+	}
+	if err := skillMem.ContextSkillFeedback(request.Context(), feedback); err != nil {
 		writeAPIError(writer, http.StatusBadRequest, "invalid_skill_feedback", err.Error())
 		return
 	}
 	writeJSON(writer, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (server *Server) activeSkillMem() skillMemory {
+	if server.skillMem != nil {
+		return server.skillMem
+	}
+	if server.hope != nil {
+		return server.hope
+	}
+	return nil
 }
 
 func (server *Server) rankAmbiguousSkills(ctx context.Context, agentID, task string, matches []hope.SkillMatch) ([]hope.SkillMatch, skillRouteEvidence) {

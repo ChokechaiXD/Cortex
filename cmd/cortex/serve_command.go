@@ -10,32 +10,22 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
-	"cortex.local/cortex/internal/automations"
 	"cortex.local/cortex/internal/config"
 	"cortex.local/cortex/internal/controlcenter"
-	"cortex.local/cortex/internal/controlplane"
 	"cortex.local/cortex/internal/cortex"
-	"cortex.local/cortex/internal/hermesruntime"
 	"cortex.local/cortex/internal/hope"
 	"cortex.local/cortex/internal/httpapi"
-	"cortex.local/cortex/internal/integrationhub"
-	hermesintegration "cortex.local/cortex/internal/integrations/hermes"
-	"cortex.local/cortex/internal/integrations/ninerouter"
 	"cortex.local/cortex/internal/intelligence"
 	"cortex.local/cortex/internal/localauth"
-	"cortex.local/cortex/internal/projectcenter"
-	"cortex.local/cortex/internal/skillcenter"
-	"cortex.local/cortex/internal/workmodes"
 )
 
 func runServe(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	dataDir := flags.String("data-dir", config.DefaultDataDir(), "Cortex data directory")
+	dataDir := flags.String("data-dir", config.DefaultDataDir(), "HOPE Mem data directory")
 	listen := flags.String("listen", "", "override configured HTTP listen address")
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -95,66 +85,45 @@ func serveCortexCycle(
 	if err != nil {
 		return controlcenter.ActionStop, fmt.Errorf("open Cortex: %w", err)
 	}
-	hopeHub, err := hope.Open(config.HopeDatabasePath(dataDir), defaultWorkspaceRoot())
+	skillMem, err := hope.Open(config.HopeDatabasePath(dataDir), "")
 	if err != nil {
 		_ = hub.Close()
-		return controlcenter.ActionStop, fmt.Errorf("open HOPE control plane: %w", err)
+		return controlcenter.ActionStop, fmt.Errorf("open HOPE Mem skill store: %w", err)
 	}
 	authenticator, err := config.NewReloadingAuthenticator(dataDir)
 	if err != nil {
-		_ = hopeHub.Close()
+		_ = skillMem.Close()
 		_ = hub.Close()
 		return controlcenter.ActionStop, fmt.Errorf("initialize authenticator: %w", err)
 	}
 	if len(file.AdminAgents) == 0 {
-		_ = hopeHub.Close()
+		_ = skillMem.Close()
 		_ = hub.Close()
 		return controlcenter.ActionStop, fmt.Errorf("initialize dashboard launcher: no administrator is configured")
 	}
 	launcherKey, err := localauth.Ensure(dataDir)
 	if err != nil {
-		_ = hopeHub.Close()
+		_ = skillMem.Close()
 		_ = hub.Close()
 		return controlcenter.ActionStop, fmt.Errorf("initialize dashboard launcher: %w", err)
 	}
 	dashboardLauncher, err := localauth.NewBroker(launcherKey, file.AdminAgents[0])
 	if err != nil {
-		_ = hopeHub.Close()
+		_ = skillMem.Close()
 		_ = hub.Close()
 		return controlcenter.ActionStop, fmt.Errorf("initialize dashboard launcher: %w", err)
 	}
 	advisor := intelligence.NewClient()
-	hermesClient := hermesruntime.New()
-	integrations := integrationhub.New(
-		hopeHub,
-		hermesintegration.New(hopeHub, hermesClient),
-		ninerouter.New(hopeHub, dataDir),
-	)
-	localAppData := os.Getenv("LOCALAPPDATA")
-	skills := skillcenter.New(
-		hopeHub,
-		config.HopeSkillsDir(dataDir),
-		filepath.Join(localAppData, "hermes", "shared-skills"),
-	)
-	hopePlane := controlplane.New(
-		hopeHub,
-		integrations,
-		workmodes.New(hopeHub, integrations),
-		projectcenter.New(hopeHub),
-		skills,
-		automations.New(hermesClient),
-		hermesClient,
-	)
 	server := &http.Server{
-		Addr: address, Handler: httpapi.NewWithHOPE(
-			hub, authenticator, runtime, dashboardLauncher, advisor, hopePlane,
+		Addr: address, Handler: httpapi.NewWithSkillMem(
+			hub, authenticator, runtime, dashboardLauncher, advisor, skillMem,
 		),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
 		WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20,
 	}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		_ = hopeHub.Close()
+		_ = skillMem.Close()
 		_ = hub.Close()
 		return controlcenter.ActionStop, fmt.Errorf("listen on %s: %w", address, err)
 	}
@@ -176,10 +145,10 @@ func serveCortexCycle(
 		_ = server.Shutdown(shutdownCtx)
 	}()
 
-	fmt.Fprintf(stdout, "HOPE listening on http://%s (Cortex memory kernel ready)\n", address)
+	fmt.Fprintf(stdout, "HOPE Mem listening on http://%s (memory kernel ready)\n", address)
 	serveErr := server.Serve(listener)
 	cancelCycle()
-	hopeCloseErr := hopeHub.Close()
+	hopeCloseErr := skillMem.Close()
 	closeErr := hub.Close()
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		return controlcenter.ActionStop, serveErr
@@ -196,12 +165,4 @@ func serveCortexCycle(
 	default:
 		return controlcenter.ActionStop, nil
 	}
-}
-
-func defaultWorkspaceRoot() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, "Workspace")
 }

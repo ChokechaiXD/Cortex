@@ -48,7 +48,7 @@
     <label class="wide"><span>Goal</span><input name="goal" value="{{with $project}}{{.Goal}}{{end}}"></label>
     <label><span>Progress</span><input name="progress" type="number" min="0" max="100" value="{{if $project}}{{$project.Progress}}{{else}}0{{end}}"></label>
     <label><span>Assigned agents</span><input name="agents" placeholder="mika, sora" value="{{with $project}}{{range $i, $id := .AgentIDs}}{{if $i}}, {{end}}{{$id}}{{end}}{{end}}"></label>
-    <label class="check-field"><input type="checkbox" name="active" value="yes" {{if $project}}{{if $project.Active}}checked{{end}}{{else}}checked{{end}}> Track on Mission Control</label>
+    <label class="check-field"><input type="checkbox" name="active" value="yes" {{if $project}}{{if $project.Active}}checked{{end}}{{else}}checked{{end}}> Track in memory overview</label>
     <label class="wide"><span>Current state</span><textarea name="current_state" rows="4">{{with $project}}{{.CurrentState}}{{end}}</textarea></label>
     <label class="wide"><span>Next action</span><input name="next_action" value="{{with $project}}{{.NextAction}}{{end}}"></label>
     <button>Save project</button>

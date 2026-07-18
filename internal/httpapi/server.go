@@ -10,6 +10,7 @@ import (
 	"cortex.local/cortex/internal/controlcenter"
 	"cortex.local/cortex/internal/controlplane"
 	"cortex.local/cortex/internal/cortex"
+	hopemem "cortex.local/cortex/internal/hope"
 	"cortex.local/cortex/internal/intelligence"
 	"cortex.local/cortex/internal/localauth"
 )
@@ -22,6 +23,7 @@ type Server struct {
 	launcher *localauth.Broker
 	advisor  intelligence.Advisor
 	hope     *controlplane.Plane
+	skillMem skillMemory
 }
 
 func New(hub *cortex.Hub, auth Authenticator) http.Handler {
@@ -54,7 +56,18 @@ func NewWithControlLauncherAndAdvisor(
 	launcher *localauth.Broker,
 	advisor intelligence.Advisor,
 ) http.Handler {
-	return NewWithHOPE(hub, auth, control, launcher, advisor, nil)
+	return newHandler(hub, auth, control, launcher, advisor, nil, nil)
+}
+
+func NewWithSkillMem(
+	hub *cortex.Hub,
+	auth Authenticator,
+	control runtimeControl,
+	launcher *localauth.Broker,
+	advisor intelligence.Advisor,
+	skillMem *hopemem.Hub,
+) http.Handler {
+	return newHandler(hub, auth, control, launcher, advisor, nil, skillMem)
 }
 
 func NewWithHOPE(
@@ -65,18 +78,26 @@ func NewWithHOPE(
 	advisor intelligence.Advisor,
 	hopePlane *controlplane.Plane,
 ) http.Handler {
+	return newHandler(hub, auth, control, launcher, advisor, hopePlane, nil)
+}
+
+func newHandler(
+	hub *cortex.Hub,
+	auth Authenticator,
+	control runtimeControl,
+	launcher *localauth.Broker,
+	advisor intelligence.Advisor,
+	hopePlane *controlplane.Plane,
+	skillMem *hopemem.Hub,
+) http.Handler {
 	server := &Server{
 		hub: hub, auth: auth, sessions: newDashboardSessions(), control: control,
-		launcher: launcher, advisor: advisor, hope: hopePlane,
+		launcher: launcher, advisor: advisor, hope: hopePlane, skillMem: skillMem,
 	}
 	mux := http.NewServeMux()
 	staticFiles, _ := fs.Sub(dashboardAssets, "static")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
-	if hopePlane == nil {
-		mux.HandleFunc("GET /", server.dashboard)
-	} else {
-		mux.HandleFunc("GET /", server.hopeDashboard)
-	}
+	mux.HandleFunc("GET /", server.dashboard)
 	mux.HandleFunc("GET /knowledge", server.dashboard)
 	mux.HandleFunc("POST /login", server.login)
 	mux.HandleFunc("POST /logout", server.logout)

@@ -1,8 +1,8 @@
-# Cortex v0.3 Specification
+# HOPE Mem specification
 
 ## Product boundary
 
-- Cortex is standalone and stores all user-owned data locally.
+- HOPE Mem is standalone and stores all user-owned data locally.
 - The core does not depend on Hermes or any other agent framework.
 - Agent integrations are replaceable connectors over the public HTTP API.
 - SQLite is the source of truth. All mutations are auditable and idempotent.

@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HOPE · {{.Memory.Title}}</title>
+  <title>HOPE Mem · {{.Memory.Title}}</title>
   <link rel="stylesheet" href="/static/cortex.css">
 </head>
 <body>
   <header class="topbar">
-    <div><p class="eyebrow">KNOWLEDGE DETAIL</p><h1>HOPE</h1></div>
+    <div><p class="eyebrow">MEMORY DETAIL</p><h1>HOPE Mem</h1></div>
     <div class="topbar-actions">
       {{if .Advanced}}<a class="mode-link" href="/ui/memories/{{.Memory.ID}}">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/ui/memories/{{.Memory.ID}}?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
       <a class="back-link" href="/knowledge{{if .Advanced}}?view=advanced{{end}}">← กลับคลังความรู้</a>

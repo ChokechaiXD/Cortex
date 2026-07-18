@@ -80,13 +80,13 @@ func (server *Server) systemAction(writer http.ResponseWriter, request *http.Req
 	view := systemActionView{}
 	switch action {
 	case controlcenter.ActionRestart:
-		view = systemActionView{Title: "กำลังเริ่ม HOPE ใหม่", Message: "HOPE จะกลับมาที่พอร์ตเดิม", Restart: true}
+		view = systemActionView{Title: "กำลังเริ่ม HOPE Mem ใหม่", Message: "HOPE Mem จะกลับมาที่พอร์ตเดิม", Restart: true}
 	case controlcenter.ActionStop:
 		if request.FormValue("confirm") != "stop" {
 			http.Error(writer, "stop confirmation is required", http.StatusBadRequest)
 			return
 		}
-		view = systemActionView{Title: "กำลังปิด HOPE", Message: "เปิดอีกครั้งได้จาก Start HOPE"}
+		view = systemActionView{Title: "กำลังปิด HOPE Mem", Message: "เปิดอีกครั้งได้จาก Start HOPE Mem"}
 	default:
 		http.Error(writer, "unknown system action", http.StatusBadRequest)
 		return
