@@ -63,7 +63,7 @@ func TestHOPEDashboardCreatesPasswordlessLoopbackSession(t *testing.T) {
 	if second.Code != http.StatusOK {
 		t.Fatalf("dashboard status=%d body=%s", second.Code, second.Body.String())
 	}
-	for _, expected := range []string{"HOPE", "Command Center", "เปิดระบบจากจุดเดียว", "Daily", "ความรู้ร่วม"} {
+	for _, expected := range []string{"HOPE", "Command Deck", "ศูนย์กลางเปิดระบบ", "P Choke", "Deputy", "Daily", "ความรู้ร่วม"} {
 		if !strings.Contains(second.Body.String(), expected) {
 			t.Fatalf("dashboard missing %q: %s", expected, second.Body.String())
 		}

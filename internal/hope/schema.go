@@ -163,7 +163,35 @@ CREATE TABLE project_agents (
 ALTER TABLE skills ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
 `
 
-var migrations = []string{schemaV1, schemaV2, schemaV3}
+const schemaV4 = `
+UPDATE agents
+SET role = 'Deputy Orchestrator',
+    summary = CASE WHEN summary = '' THEN 'รองผู้ประสานงานของ P Choke สำหรับ orchestrate agent และส่งต่องาน' ELSE summary END,
+    capabilities_json = CASE WHEN capabilities_json = '[]' THEN '["orchestration","handoff","review"]' ELSE capabilities_json END
+WHERE id = 'mika' AND role = 'Orchestrator';
+
+UPDATE agents
+SET role = 'Coding Operator'
+WHERE id = 'sora' AND role = 'Coding';
+
+UPDATE agents
+SET role = 'Research Operator'
+WHERE id = 'nua' AND role = 'Research';
+
+UPDATE agents
+SET role = 'Image Operator'
+WHERE id = 'aura' AND role = 'Image';
+
+UPDATE agents
+SET role = 'Assistant Operator'
+WHERE id = 'nari' AND role = 'Assistant';
+
+UPDATE work_modes
+SET description = 'MIKA ทำหน้าที่ deputy และเปิด 9Router สำหรับงานทั่วไป'
+WHERE id = 'daily' AND description = 'MIKA พร้อม 9Router สำหรับงานทั่วไป';
+`
+
+var migrations = []string{schemaV1, schemaV2, schemaV3, schemaV4}
 
 func openDatabase(ctx context.Context, path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)

@@ -18,8 +18,15 @@ var dashboardAssets embed.FS
 
 var dashboardTemplates = template.Must(template.ParseFS(dashboardAssets, "templates/*.html"))
 
+const (
+	hopeOwnerName  = "P Choke"
+	hopeDeputyName = "MIKA"
+)
+
 type dashboardView struct {
 	AgentID             string
+	OwnerName           string
+	DeputyName          string
 	CSRFToken           string
 	Advanced            bool
 	Total               int
@@ -127,14 +134,16 @@ func (server *Server) dashboard(writer http.ResponseWriter, request *http.Reques
 		}
 	}
 	view := dashboardView{
-		AgentID:   session.AgentID,
-		CSRFToken: session.CSRFToken,
-		Advanced:  request.URL.Query().Get("view") == "advanced",
-		Candidate: counts[cortex.LifecycleCandidate],
-		Active:    counts[cortex.LifecycleActive],
-		Canonical: counts[cortex.LifecycleCanonical],
-		Memories:  make([]dashboardMemory, 0, len(browsed.Memories)),
-		Filters:   filters, Matched: browsed.Total,
+		AgentID:    session.AgentID,
+		OwnerName:  hopeOwnerName,
+		DeputyName: hopeDeputyName,
+		CSRFToken:  session.CSRFToken,
+		Advanced:   request.URL.Query().Get("view") == "advanced",
+		Candidate:  counts[cortex.LifecycleCandidate],
+		Active:     counts[cortex.LifecycleActive],
+		Canonical:  counts[cortex.LifecycleCanonical],
+		Memories:   make([]dashboardMemory, 0, len(browsed.Memories)),
+		Filters:    filters, Matched: browsed.Total,
 		CandidateGroups: candidateGroups,
 		CanBulkReview:   server.hub.CanGovern(session.AgentID) && counts[cortex.LifecycleCandidate] > 0,
 	}

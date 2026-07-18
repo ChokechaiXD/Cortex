@@ -12,6 +12,8 @@ import (
 
 type hopeDashboardView struct {
 	AgentID      string
+	OwnerName    string
+	DeputyName   string
 	CSRFToken    string
 	Section      string
 	Notice       string
@@ -81,7 +83,8 @@ func (server *Server) hopeDashboard(writer http.ResponseWriter, request *http.Re
 	}
 	counts, _ := server.hub.Counts(request.Context(), session.AgentID)
 	view := hopeDashboardView{
-		AgentID: session.AgentID, CSRFToken: session.CSRFToken, Section: section,
+		AgentID: session.AgentID, OwnerName: hopeOwnerName, DeputyName: hopeDeputyName,
+		CSRFToken: session.CSRFToken, Section: section,
 		Notice:  hopeNotice(request.URL.Query().Get("notice")),
 		Pending: counts["candidate"], SkillID: strings.TrimSpace(request.URL.Query().Get("skill")),
 	}

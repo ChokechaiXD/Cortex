@@ -9,13 +9,14 @@
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">HOPE · Cortex Memory Kernel</p>
+      <p class="eyebrow">HOPE · Knowledge Center</p>
       <h1>Knowledge Center</h1>
+      <p class="authority-inline">Owner: {{.OwnerName}} · Deputy: {{.DeputyName}} · Session: {{.AgentID}}</p>
     </div>
     <div class="topbar-actions">
       <a class="mode-link" href="/">กลับ HOPE</a>
       {{if .Advanced}}<a class="mode-link" href="/knowledge">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/knowledge?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
-      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">ออกจากระบบ · {{.AgentID}}</button></form>
+      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">ออกจากระบบ</button></form>
     </div>
   </header>
   <main>
@@ -23,7 +24,7 @@
     <section class="system-panel" aria-labelledby="system-title">
       <div class="system-copy">
         <p class="eyebrow">สถานะระบบ</p>
-        <h2 id="system-title">ระบบพร้อมใช้งาน</h2>
+        <h2 id="system-title">Knowledge Kernel พร้อมใช้งาน</h2>
         <p class="system-state"><span aria-hidden="true"></span>กำลังทำงานในเครื่อง</p>
         {{if .Advanced}}<p class="muted">{{.System.Listen}} · Version {{.System.Version}} · PID {{.System.PID}} · เปิดมาแล้ว {{.System.Uptime}}</p>{{end}}
       </div>
@@ -34,12 +35,12 @@
         </form>
         <form method="post" action="/ui/system/action">
           <input type="hidden" name="csrf" value="{{.CSRFToken}}">
-          <button class="quiet" name="action" value="restart" type="submit">เริ่ม Cortex ใหม่</button>
+          <button class="quiet" name="action" value="restart" type="submit">เริ่ม HOPE ใหม่</button>
         </form>
         <form method="post" action="/ui/system/action" class="stop-form">
           <input type="hidden" name="csrf" value="{{.CSRFToken}}">
           <label><input type="checkbox" name="confirm" value="stop" required> ยืนยันการปิด</label>
-          <button class="danger" name="action" value="stop" type="submit">ปิด Cortex</button>
+          <button class="danger" name="action" value="stop" type="submit">ปิด HOPE</button>
         </form>
       </div>
     </section>
@@ -79,7 +80,7 @@
             <option value="1200" {{if eq .PrefetchTokenBudget 1200}}selected{{end}}>ละเอียด · 1,200</option>
             <option value="2000" {{if eq .PrefetchTokenBudget 2000}}selected{{end}}>สูง · 2,000</option>
           </select></label>
-          <label class="check-field"><input type="checkbox" name="auto_capture_enabled" value="yes" {{if .AutoCaptureEnabled}}checked{{end}}> ให้ Cortex เก็บเฉพาะบทเรียนที่ทำเครื่องหมาย</label>
+          <label class="check-field"><input type="checkbox" name="auto_capture_enabled" value="yes" {{if .AutoCaptureEnabled}}checked{{end}}> ให้ HOPE เก็บเฉพาะบทเรียนที่ทำเครื่องหมาย</label>
           {{if $.Advanced}}
           <label><span>ความยาวบทเรียนสูงสุด</span><select name="auto_capture_max_chars">
             <option value="500" {{if eq .AutoCaptureMaxChars 500}}selected{{end}}>500 ตัวอักษร</option>
@@ -103,7 +104,7 @@
         </form>
         {{end}}
       </div>
-      <p class="muted">Cortex ไม่แสดง token ในหน้านี้ และสร้าง backup ก่อนเปลี่ยนค่าทุกครั้ง</p>
+      <p class="muted">HOPE ไม่แสดง token ในหน้านี้ และสร้าง backup ก่อนเปลี่ยนค่าทุกครั้ง</p>
     </section>
     {{else if .AgentSettingsErr}}
     <p class="notice" role="alert">อ่านการตั้งค่าเอเจนต์ไม่ได้: {{.AgentSettingsErr}}</p>
@@ -122,7 +123,7 @@
       <div class="curator-head">
         <div>
           <p class="eyebrow">ผู้ช่วยจัดระเบียบ · ไม่ใช้ API</p>
-          <h2 id="curator-title">Cortex แนะนำให้ดูอะไร</h2>
+          <h2 id="curator-title">HOPE แนะนำให้ดูอะไร</h2>
           <p class="muted">โหมดปัจจุบัน: {{.Curator.ModeLabel}} · กฎหลักทุกข้อยังลดระดับหรือแทนที่ได้</p>
         </div>
         <form method="post" action="/ui/curator/run" class="curator-run-actions">
@@ -162,7 +163,7 @@
       {{end}}
 
       <details class="curator-settings">
-        <summary>ตั้งค่าว่าจะให้ Cortex ช่วยมากแค่ไหน</summary>
+        <summary>ตั้งค่าว่าจะให้ HOPE ช่วยมากแค่ไหน</summary>
         <form method="post" action="/ui/curator/settings" class="curator-settings-form">
           <input type="hidden" name="csrf" value="{{.CSRFToken}}">
           <label><span>ระดับการช่วย</span><select name="mode">
@@ -256,7 +257,7 @@
         </form>
         {{if .Advisor.ModelsLoaded}}<p class="muted">พบ {{len .Advisor.Models}} โมเดลจาก endpoint ปัจจุบัน รายการนี้ cache ชั่วคราวและไม่เขียนทับ config</p>{{end}}
         {{if .Advisor.ModelsError}}<p class="notice" role="alert">โหลดโมเดลไม่ได้: {{.Advisor.ModelsError}}</p>{{end}}
-        <p class="muted">Cortex ส่งเฉพาะคำแนะนำที่กรองแล้ว ไม่ส่งบทสนทนาทั้ง session และคำตอบจากโมเดลเป็นเพียงความเห็นประกอบ ไม่ใช่หลักฐาน</p>
+        <p class="muted">HOPE ส่งเฉพาะคำแนะนำที่กรองแล้ว ไม่ส่งบทสนทนาทั้ง session และคำตอบจากโมเดลเป็นเพียงความเห็นประกอบ ไม่ใช่หลักฐาน</p>
       </details>
     </section>
     {{else if .AdvisorErr}}
@@ -272,7 +273,7 @@
         </div>
         <a class="quiet-link" href="/knowledge?lifecycle=candidate{{if .Advanced}}&view=advanced{{end}}#candidate-inbox">ดูรายการรอตรวจทั้งหมด</a>
       </div>
-      <p class="muted">Cortex ใช้กฎเบา ๆ แยกข้อมูลนำเข้าตามจุดประสงค์ พี่จึงเลือกตรวจและจัดการเป็นชุดได้โดยไม่เสีย token</p>
+      <p class="muted">HOPE ใช้กฎเบา ๆ แยกข้อมูลนำเข้าตามจุดประสงค์ พี่จึงเลือกตรวจและจัดการเป็นชุดได้โดยไม่เสีย token</p>
       <div class="candidate-groups">
         {{range .CandidateGroups}}
         <a class="candidate-group {{if .Active}}candidate-group-active{{end}}" href="/knowledge?lifecycle=candidate&candidate_group={{.Key}}{{if $.Advanced}}&view=advanced{{end}}#candidate-inbox">

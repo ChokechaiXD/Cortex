@@ -65,8 +65,8 @@ func TestSkillRouteFeedbackIsTrackedOnce(t *testing.T) {
 		t.Fatalf("skill counts = use:%d success:%d failure:%d", skill.UseCount, skill.SuccessCount, skill.FailureCount)
 	}
 	var version int
-	if err := hub.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 3 {
-		t.Fatalf("schema version=%d err=%v, want 3", version, err)
+	if err := hub.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil || version != 4 {
+		t.Fatalf("schema version=%d err=%v, want 4", version, err)
 	}
 }
 

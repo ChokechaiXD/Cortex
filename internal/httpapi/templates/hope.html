@@ -20,19 +20,19 @@
       <a class="{{if eq .Section "connections"}}active{{end}}" href="/?section=connections">Connections</a>
       <a class="{{if eq .Section "settings"}}active{{end}}" href="/?section=settings">Settings</a>
     </nav>
-    <div class="hope-sidebar-foot"><span class="live-dot"></span> ทำงานในเครื่อง</div>
+    <div class="hope-sidebar-foot"><span class="live-dot"></span> Owner-controlled local hub</div>
   </aside>
 
   <main class="hope-main">
     <header class="hope-page-head">
-      <div><p class="eyebrow">HOPE OPERATING HUB</p><h1>{{if eq .Section "today"}}Command Center{{else if eq .Section "agents"}}Agent Roster{{else if eq .Section "projects"}}Project Tracker{{else if eq .Section "skills"}}Skill Library{{else if eq .Section "automations"}}Automation Board{{else if eq .Section "connections"}}Service Control{{else}}Settings{{end}}</h1></div>
-      <div class="hope-user">{{.AgentID}}</div>
+      <div><p class="eyebrow">HOPE OPERATING HUB</p><h1>{{if eq .Section "today"}}Command Deck{{else if eq .Section "agents"}}Agent Roster{{else if eq .Section "projects"}}Project Tracker{{else if eq .Section "skills"}}Skill Library{{else if eq .Section "automations"}}Automation Board{{else if eq .Section "connections"}}Service Control{{else}}Settings{{end}}</h1></div>
+      <div class="authority-strip" aria-label="สิทธิ์ควบคุมระบบ"><span><small>Owner</small><strong>{{.OwnerName}}</strong></span><span><small>Deputy</small><strong>{{.DeputyName}}</strong></span><span><small>Session</small><strong>{{.AgentID}}</strong></span></div>
     </header>
     {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 
     {{if eq .Section "today"}}
       <section class="hope-hero">
-        <div><p class="eyebrow">LOCAL CONTROL</p><h2>เปิดระบบจากจุดเดียว</h2><p>HOPE ตรวจสถานะ ใช้ process เดิมเมื่อเปิดอยู่ และไม่เปิดพอร์ตซ้ำ</p></div>
+        <div><p class="eyebrow">LOCAL CONTROL</p><h2>ศูนย์กลางเปิดระบบและดูสถานะ</h2><p>HOPE ตรวจ process เดิมก่อนเปิดใหม่ ใช้พอร์ตเดิม และทำหน้าที่เชื่อมระบบ ไม่แทนที่ Hermes หรือ 9Router</p><div class="command-metrics"><span>Root: {{.OwnerName}}</span><span>Deputy: {{.DeputyName}}</span><span>Pending: {{.Pending}}</span></div></div>
         <div class="hope-memory-mini"><strong>{{.TotalMemory}}</strong><span>ความรู้ร่วม</span><a href="/knowledge">เปิดคลังความรู้</a></div>
       </section>
       <section class="hope-grid hope-mode-grid">
@@ -46,7 +46,7 @@
       </section>
       <details class="hope-editor"><summary>Manage work mode</summary><form method="post" action="/ui/hope/work-modes" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="creative"></label><label><span>Name</span><input name="name" required placeholder="Creative"></label><label class="wide"><span>Purpose</span><input name="description" placeholder="Open the services and agents for this workflow"></label><fieldset class="wide"><legend>Services</legend><div class="chip-row">{{range .ModeSystems}}<label class="check-field"><input type="checkbox" name="integrations" value="{{.ID}}"> {{.Name}}</label>{{end}}</div></fieldset><fieldset class="wide"><legend>Agents</legend><div class="chip-row">{{range .Agents}}<label class="check-field"><input type="checkbox" name="agents" value="{{.Agent.ID}}"> {{.Agent.Name}}</label>{{end}}</div></fieldset><label class="check-field wide"><input type="checkbox" name="open_telegram" value="yes" checked> Open agent Telegram links</label><button>Save mode</button></form></details>
       <section class="hope-two-column">
-        <div><div class="section-head"><div><p class="eyebrow">SERVICES</p><h2>ระบบที่เปิดอยู่</h2></div><a class="quiet-link" href="/?section=connections">จัดการ</a></div>
+        <div><div class="section-head"><div><p class="eyebrow">SERVICES</p><h2>ระบบที่เชื่อมต่อ</h2></div><a class="quiet-link" href="/?section=connections">จัดการ</a></div>
           <div class="compact-list">{{range .Connections}}<div><span class="state-dot state-{{.State}}"></span><strong>{{.Name}}</strong><small>{{.StateLabel}}</small></div>{{end}}</div>
         </div>
         <div><div class="section-head"><div><p class="eyebrow">LOG</p><h2>กิจกรรมล่าสุด</h2></div></div>
@@ -58,7 +58,7 @@
     {{if eq .Section "agents"}}
       <section class="hope-grid agent-grid">
       {{range .Agents}}
-        <article class="hope-card agent-card"><div class="agent-avatar">{{if .Agent.AvatarPath}}<img src="{{.Agent.AvatarPath}}" alt="">{{else}}{{.Initial}}{{end}}</div><div><p class="eyebrow">{{.Agent.Role}}</p><h2>{{.Agent.Name}}</h2><p>{{if .Agent.Summary}}{{.Agent.Summary}}{{else}}Hermes profile: {{.Agent.Profile}}{{end}}</p><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><div class="chip-row">{{range .Agent.Capabilities}}<span>{{.}}</span>{{end}}</div></div>
+        <article class="hope-card agent-card"><div class="agent-avatar">{{if .Agent.AvatarPath}}<img src="{{.Agent.AvatarPath}}" alt="">{{else}}{{.Initial}}{{end}}</div><div><p class="eyebrow">{{.Agent.Role}}</p><h2>{{.Agent.Name}} {{if eq .Agent.ID "mika"}}<span class="rank-badge">Deputy</span>{{else}}<span class="rank-badge">Operator</span>{{end}}</h2><p>{{if .Agent.Summary}}{{.Agent.Summary}}{{else}}Hermes profile: {{.Agent.Profile}}{{end}}</p><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><div class="chip-row">{{range .Agent.Capabilities}}<span>{{.}}</span>{{end}}</div></div>
           <form method="post" action="/ui/hope/agents/{{.Agent.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}">{{if .CanStart}}<button name="action" value="start">เปิด Agent</button>{{end}}{{if .CanStop}}<button class="danger" name="action" value="stop">ปิด Agent</button>{{end}}{{if .CanOpen}}<a class="button-link quiet" href="{{.Agent.TelegramURL}}" target="_blank" rel="noreferrer">เปิด Telegram</a>{{end}}</form>
         </article>
       {{end}}
@@ -67,7 +67,7 @@
     {{end}}
 
     {{if eq .Section "projects"}}
-      <section class="hope-toolbar"><form method="post" action="/ui/hope/projects/discover"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button>Scan roots</button></form><p>Project คือ context งาน ไม่ใช่แค่ folder link</p></section>
+      <section class="hope-toolbar"><form method="post" action="/ui/hope/projects/discover"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button>Scan roots</button></form><p>Project คือ workspace context: เป้าหมาย สถานะ นักแสดง และ next action</p></section>
       <section class="hope-grid project-grid">{{range .Projects}}<article class="hope-card project-card"><p class="eyebrow">{{.Kind}} · {{.Status}}</p><h2>{{.Name}}</h2><p>{{.Description}}</p><progress value="{{.Progress}}" max="100">{{.Progress}}%</progress><small>{{.Progress}}% · {{if .CurrentState}}{{.CurrentState}}{{else}}ยังไม่มี state{{end}}</small>{{if .NextAction}}<p class="next-action">Next: {{.NextAction}}</p>{{end}}<div class="chip-row">{{range .AgentIDs}}<span>{{.}}</span>{{end}}</div>{{if .Path}}<p class="path-text">{{.Path}}</p>{{end}}<form method="post" action="/ui/hope/projects/{{.ID}}/delete"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button class="danger">Remove</button></form></article>{{else}}<div class="empty"><h2>No projects</h2><p>Add a project tracker below.</p></div>{{end}}</section>
       <details class="hope-editor" open><summary>Manage project</summary><form method="post" action="/ui/hope/projects" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="cortex"></label><label><span>Name</span><input name="name" required></label><label><span>Type</span><input name="kind" placeholder="app, novel, infra"></label><label><span>Status</span><select name="status"><option value="active">active</option><option value="paused">paused</option><option value="done">done</option></select></label><label class="wide"><span>Folder path</span><input name="path" placeholder="optional"></label><label class="wide"><span>What is this project?</span><input name="description"></label><label class="wide"><span>Goal</span><input name="goal"></label><label><span>Progress</span><input name="progress" type="number" min="0" max="100" value="0"></label><label><span>Assigned agents</span><select name="agents" multiple size="4">{{range .Agents}}<option value="{{.Agent.ID}}">{{.Agent.Name}}</option>{{end}}</select></label><label class="wide"><span>Current state</span><textarea name="current_state" rows="4"></textarea></label><label class="wide"><span>Next action</span><input name="next_action"></label><button>Save project</button></form></details>
       <details class="hope-editor"><summary>Workspace roots</summary><form method="post" action="/ui/hope/projects/roots" class="inline-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><input name="path" required placeholder="C:\Users\...\Workspace"><button>Add root</button></form><div class="chip-row">{{range .Roots}}<span>{{.}}</span>{{end}}</div></details>
@@ -87,8 +87,8 @@
     {{end}}
 
     {{if eq .Section "connections"}}
-      <section class="connection-list">{{range .Connections}}<article class="hope-card"><div><p class="eyebrow">CONNECTION</p><h2>{{.Name}}</h2><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><small>{{.Detail}}</small></div><form method="post" action="/ui/hope/integrations/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}">{{if .CanStart}}<button name="action" value="start">เปิด</button>{{end}}{{if .CanStop}}<button class="danger" name="action" value="stop">ปิดที่ HOPE เปิด</button>{{end}}{{if .URL}}<button class="quiet" name="action" value="open">เปิดหน้าต่างเดิม</button>{{end}}</form></article>{{end}}</section>
-      <p class="safety-note">HOPE ไม่หยุด process ภายนอก ไม่ลบ config ของระบบอื่น และจะปฏิเสธการเปิดเมื่อพอร์ตถูกใช้งานแบบไม่ทราบที่มา</p>
+      <section class="connection-list">{{range .Connections}}<article class="hope-card"><div><p class="eyebrow">CONNECTION</p><h2>{{.Name}}</h2><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><small>{{.Detail}}</small></div><form method="post" action="/ui/hope/integrations/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}">{{if .CanStart}}<button name="action" value="start">เปิด</button>{{end}}{{if .CanStop}}<button class="danger" name="action" value="stop">ปิด process ที่ HOPE เปิด</button>{{end}}{{if .URL}}<button class="quiet" name="action" value="open">เปิดหน้าเว็บ</button>{{end}}</form></article>{{end}}</section>
+      <p class="safety-note">HOPE เป็น control plane: ตรวจว่า service เปิดอยู่หรือไม่ เปิดผ่านคำสั่งที่ตั้งไว้ และไม่ปิด process ภายนอกที่ไม่ได้เปิดเอง</p>
     {{end}}
 
     {{if eq .Section "settings"}}

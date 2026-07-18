@@ -82,7 +82,7 @@ func TestDashboardShowsRuntimeAndSafelyRequestsRestartOrStop(t *testing.T) {
 	dashboard := httptest.NewRecorder()
 	handler.ServeHTTP(dashboard, dashboardRequest)
 	body := dashboard.Body.String()
-	for _, expected := range []string{"ระบบพร้อมใช้งาน", "กำลังทำงานในเครื่อง", "127.0.0.1:7777", "PID 4242", "เริ่ม Cortex ใหม่", "ปิด Cortex", "ค้นหาและเชื่อมเอเจนต์"} {
+	for _, expected := range []string{"Knowledge Kernel พร้อมใช้งาน", "กำลังทำงานในเครื่อง", "127.0.0.1:7777", "PID 4242", "เริ่ม HOPE ใหม่", "ปิด HOPE", "ค้นหาและเชื่อมเอเจนต์"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("dashboard omitted %q: %s", expected, body)
 		}

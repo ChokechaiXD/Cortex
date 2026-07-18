@@ -110,7 +110,7 @@ func TestDashboardLoginAndReview(t *testing.T) {
 	dashboardBody := dashboard.Body.String()
 	for _, expected := range []string{
 		"คลังความรู้", "รอตรวจ", "ข้อตัดสินใจ", "โปรเจกต์ · novelclaw",
-		"รายละเอียดขั้นสูง", "Cortex แนะนำให้ดูอะไร", "รอหลักฐาน",
+		"รายละเอียดขั้นสูง", "HOPE แนะนำให้ดูอะไร", "รอหลักฐาน",
 	} {
 		if !strings.Contains(dashboardBody, expected) {
 			t.Fatalf("human dashboard omitted %q: %s", expected, dashboardBody)

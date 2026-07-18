@@ -42,11 +42,11 @@ func (hub *Hub) seed(ctx context.Context, root string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	agents := []Agent{
-		{ID: "mika", Name: "MIKA", Role: "Orchestrator", Profile: "default", Enabled: true},
-		{ID: "sora", Name: "Sora", Role: "Coding", Profile: "sora", Enabled: true},
-		{ID: "nua", Name: "Nua", Role: "Research", Profile: "nua", Enabled: true},
-		{ID: "aura", Name: "Aura", Role: "Image", Profile: "aura", Enabled: true},
-		{ID: "nari", Name: "Nari", Role: "Assistant", Profile: "nari", Enabled: true},
+		{ID: "mika", Name: "MIKA", Role: "Deputy Orchestrator", Profile: "default", Enabled: true},
+		{ID: "sora", Name: "Sora", Role: "Coding Operator", Profile: "sora", Enabled: true},
+		{ID: "nua", Name: "Nua", Role: "Research Operator", Profile: "nua", Enabled: true},
+		{ID: "aura", Name: "Aura", Role: "Image Operator", Profile: "aura", Enabled: true},
+		{ID: "nari", Name: "Nari", Role: "Assistant Operator", Profile: "nari", Enabled: true},
 	}
 	for _, agent := range agents {
 		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO agents(id,name,role,profile,enabled) VALUES(?,?,?,?,?)`,
@@ -55,7 +55,7 @@ func (hub *Hub) seed(ctx context.Context, root string) error {
 		}
 	}
 	modes := []WorkMode{
-		{ID: "daily", Name: "Daily", Description: "MIKA พร้อม 9Router สำหรับงานทั่วไป", Integrations: []string{"9router"}, Agents: []string{"mika"}, OpenTelegram: true},
+		{ID: "daily", Name: "Daily", Description: "MIKA ทำหน้าที่ deputy และเปิด 9Router สำหรับงานทั่วไป", Integrations: []string{"9router"}, Agents: []string{"mika"}, OpenTelegram: true},
 		{ID: "code", Name: "Code", Description: "Sora และเครื่องมือสำหรับงานพัฒนา", Integrations: []string{"9router"}, Agents: []string{"sora"}, OpenTelegram: true},
 		{ID: "research", Name: "Research", Description: "Nua พร้อม 9Router สำหรับค้นคว้า", Integrations: []string{"9router"}, Agents: []string{"nua"}, OpenTelegram: true},
 	}
