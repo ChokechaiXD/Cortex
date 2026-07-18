@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -134,7 +135,13 @@ WHERE length(m.embedding) = ?
 				continue
 			}
 			sim := cosineSimilarity(queryVec, vec)
-			if sim < 0.30 {
+			// 9Router llama-nemotron cosine for this corpus peaks around
+			// 0.36 for clearly relevant memories and sits near 0.1-0.2 for
+			// unrelated ones. A 0.30 gate would silently drop the very
+			// paraphrases semantic search exists to catch, so we admit
+			// anything above a low floor and let the final score sort
+			// separate signal from noise.
+			if sim < 0.15 {
 				continue
 			}
 			ranked = append(ranked, rankedID{id: id, rank: -sim}) // negative rank = semantic signal (higher sim -> "better")
@@ -145,9 +152,16 @@ WHERE length(m.embedding) = ?
 		}
 	}
 
-	result := RecallResult{
-		ID: recallID, Items: make([]RecallItem, 0, limit), TokenBudget: query.TokenBudget,
+	// Two-phase: load each candidate memory once, compute its real score
+	// (lexical + truth/utility, blended with semantic cosine when available),
+	// then sort by that score. This keeps results ordered by relevance even
+	// after semantic hits are mixed into the FTS5 result set.
+	type scoredID struct {
+		id    string
+		rank  float64
+		score float64
 	}
+	scored := make([]scoredID, 0, len(ranked))
 	remoteDim := len(queryVec) >= RemoteEmbedDim
 	for _, candidate := range ranked {
 		memory, err := getMemory(ctx, tx, candidate.id)
@@ -159,9 +173,7 @@ WHERE length(m.embedding) = ?
 		}
 		var score float64
 		if candidate.rank < 0 {
-			// Pure semantic hit (FTS5 missed it). Score tracks cosine
-			// similarity directly so ordering reflects meaning, not a
-			// capped blend that collapses everything to 1.0.
+			// Pure semantic hit (FTS5 missed it). Score tracks cosine directly.
 			sim := -candidate.rank
 			score = 0.80*sim + 0.20*memory.TruthScore
 		} else {
@@ -179,7 +191,21 @@ WHERE length(m.embedding) = ?
 				score = (1-weight)*score + weight*semantic
 			}
 		}
-		added, err := appendRecallItem(&result, RecallItem{Memory: memory, Score: score})
+		scored = append(scored, scoredID{id: candidate.id, rank: candidate.rank, score: score})
+	}
+	sort.SliceStable(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	result := RecallResult{
+		ID: recallID, Items: make([]RecallItem, 0, limit), TokenBudget: query.TokenBudget,
+	}
+	for _, candidate := range scored {
+		memory, err := getMemory(ctx, tx, candidate.id)
+		if err != nil {
+			return RecallResult{}, err
+		}
+		added, err := appendRecallItem(&result, RecallItem{Memory: memory, Score: candidate.score})
 		if err != nil {
 			return RecallResult{}, err
 		}
