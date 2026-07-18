@@ -1,0 +1,52 @@
+{{define "hope_projects"}}
+<section class="hope-toolbar">
+  <form method="post" action="/ui/hope/projects/discover"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button>Scan roots</button></form>
+  <p>Project Tracker เก็บเป้าหมาย สถานะ agent ที่เกี่ยวข้อง และ next action ไม่ใช่ file browser</p>
+</section>
+
+<section class="project-board">
+{{range .Projects}}
+  <article class="project-card-full">
+    <div class="project-card-head">
+      <div><p class="eyebrow">{{.Kind}} / {{.Status}}</p><h2>{{.Name}}</h2></div>
+      <strong>{{.Progress}}%</strong>
+    </div>
+    <progress value="{{.Progress}}" max="100">{{.Progress}}%</progress>
+    <p>{{if .Description}}{{.Description}}{{else}}ยังไม่มีคำอธิบายโปรเจกต์{{end}}</p>
+    <dl class="project-facts">
+      <div><dt>Goal</dt><dd>{{if .Goal}}{{.Goal}}{{else}}ยังไม่ระบุ{{end}}</dd></div>
+      <div><dt>State</dt><dd>{{if .CurrentState}}{{.CurrentState}}{{else}}ยังไม่มี state{{end}}</dd></div>
+      <div><dt>Next</dt><dd>{{if .NextAction}}{{.NextAction}}{{else}}ยังไม่มี next action{{end}}</dd></div>
+      <div><dt>Folder</dt><dd>{{if .Path}}{{.Path}}{{else}}ไม่ผูก folder{{end}}</dd></div>
+    </dl>
+    <div class="chip-row">{{range .AgentIDs}}<span>{{.}}</span>{{else}}<span>ยังไม่ผูก agent</span>{{end}}</div>
+    <form method="post" action="/ui/hope/projects/{{.ID}}/delete" class="card-actions"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button class="danger">Remove</button></form>
+  </article>
+{{else}}<div class="empty"><h2>No projects</h2><p>Add a tracker below.</p></div>{{end}}
+</section>
+
+<details class="hope-editor" open>
+  <summary>Manage project</summary>
+  <form method="post" action="/ui/hope/projects" class="hope-form">
+    <input type="hidden" name="csrf" value="{{.CSRFToken}}">
+    <label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="cortex"></label>
+    <label><span>Name</span><input name="name" required></label>
+    <label><span>Type</span><input name="kind" placeholder="app, novel, infra"></label>
+    <label><span>Status</span><select name="status"><option value="active">active</option><option value="paused">paused</option><option value="done">done</option></select></label>
+    <label class="wide"><span>Folder path</span><input name="path" placeholder="optional"></label>
+    <label class="wide"><span>What is this project?</span><input name="description"></label>
+    <label class="wide"><span>Goal</span><input name="goal"></label>
+    <label><span>Progress</span><input name="progress" type="number" min="0" max="100" value="0"></label>
+    <label><span>Assigned agents</span><select name="agents" multiple size="4">{{range .Agents}}<option value="{{.Agent.ID}}">{{.Agent.Name}}</option>{{end}}</select></label>
+    <label class="wide"><span>Current state</span><textarea name="current_state" rows="4"></textarea></label>
+    <label class="wide"><span>Next action</span><input name="next_action"></label>
+    <button>Save project</button>
+  </form>
+</details>
+
+<details class="hope-editor">
+  <summary>Workspace roots</summary>
+  <form method="post" action="/ui/hope/projects/roots" class="inline-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><input name="path" required placeholder="C:\Users\...\Workspace"><button>Add root</button></form>
+  <div class="chip-row">{{range .Roots}}<span>{{.}}</span>{{end}}</div>
+</details>
+{{end}}

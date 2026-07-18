@@ -11,27 +11,35 @@ import (
 )
 
 type hopeDashboardView struct {
-	AgentID      string
-	OwnerName    string
-	DeputyName   string
-	CSRFToken    string
-	Section      string
-	Notice       string
-	TotalMemory  int
-	Pending      int
-	Connections  []hopeConnectionView
-	ModeSystems  []hopeModeSystemView
-	Agents       []hopeAgentView
-	Modes        []hope.WorkMode
-	Projects     []hope.Project
-	Roots        []string
-	Skills       []hope.Skill
-	SkillDetail  *hopeSkillDetailView
-	SkillID      string
-	Events       []hopeEventView
-	Jobs         any
-	JobsError    string
-	Passwordless bool
+	AgentID            string
+	OwnerName          string
+	DeputyName         string
+	CSRFToken          string
+	Section            string
+	Notice             string
+	TotalMemory        int
+	Pending            int
+	AgentCount         int
+	SkillCount         int
+	ProjectCount       int
+	ActiveProjectCount int
+	ReadyConnections   int
+	ProblemConnections int
+	TotalConnections   int
+	Connections        []hopeConnectionView
+	ModeSystems        []hopeModeSystemView
+	Agents             []hopeAgentView
+	Modes              []hope.WorkMode
+	Projects           []hope.Project
+	ActiveProjects     []hope.Project
+	Roots              []string
+	Skills             []hope.Skill
+	SkillDetail        *hopeSkillDetailView
+	SkillID            string
+	Events             []hopeEventView
+	Jobs               any
+	JobsError          string
+	Passwordless       bool
 }
 
 type hopeConnectionView struct {
@@ -116,6 +124,9 @@ func (server *Server) populateHOPEView(request *http.Request, view *hopeDashboar
 		if err := server.loadHOPEAgents(ctx, view, false); err != nil {
 			return err
 		}
+		if err := server.loadHOPEProjects(ctx, view, false); err != nil {
+			return err
+		}
 		server.loadHOPEConnections(ctx, view)
 		return server.loadHOPEEvents(ctx, view)
 	case "agents":
@@ -160,6 +171,7 @@ func (server *Server) loadHOPEAgents(ctx context.Context, view *hopeDashboardVie
 		for _, item := range statuses {
 			view.Agents = append(view.Agents, presentAgent(item))
 		}
+		view.AgentCount = len(view.Agents)
 		return nil
 	}
 	agents, err := server.hope.Agents(ctx)
@@ -169,6 +181,7 @@ func (server *Server) loadHOPEAgents(ctx context.Context, view *hopeDashboardVie
 	for _, agent := range agents {
 		view.Agents = append(view.Agents, hopeAgentView{Agent: agent, Initial: firstRune(agent.Name), State: "unknown", StateLabel: "ยังไม่ได้ตรวจ", CanOpen: agent.TelegramURL != ""})
 	}
+	view.AgentCount = len(view.Agents)
 	return nil
 }
 
@@ -178,6 +191,13 @@ func (server *Server) loadHOPEProjects(ctx context.Context, view *hopeDashboardV
 		return err
 	}
 	view.Projects = projects
+	view.ProjectCount = len(projects)
+	for _, project := range projects {
+		if project.Active && project.Status != "done" {
+			view.ActiveProjectCount++
+			view.ActiveProjects = append(view.ActiveProjects, project)
+		}
+	}
 	if includeRoots {
 		roots, err := server.hope.ProjectRoots(ctx)
 		if err != nil {
@@ -194,6 +214,7 @@ func (server *Server) loadHOPESkills(ctx context.Context, view *hopeDashboardVie
 		return err
 	}
 	view.Skills = skills
+	view.SkillCount = len(skills)
 	if id := view.SkillID; id != "" {
 		skill, body, err := server.hope.ReadSkill(ctx, id)
 		if err == nil {
@@ -221,6 +242,12 @@ func (server *Server) loadHOPEConnections(ctx context.Context, view *hopeDashboa
 	for _, status := range server.hope.Connections(ctx) {
 		if status.ID == "telegram" {
 			continue
+		}
+		view.TotalConnections++
+		if status.State == integrationhub.StateRunning || status.State == integrationhub.StateExternal {
+			view.ReadyConnections++
+		} else {
+			view.ProblemConnections++
 		}
 		view.Connections = append(view.Connections, presentConnection(status))
 		if status.ID != "hermes" {

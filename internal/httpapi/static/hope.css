@@ -217,16 +217,132 @@
   color: var(--hope-accent);
 }
 
+.mission-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr);
+  gap: 24px;
+  align-items: stretch;
+  border: 1px solid var(--hope-line);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(214, 189, 122, .13), transparent 42%),
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent),
+    var(--hope-panel-strong);
+  box-shadow: 0 20px 70px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.035);
+  padding: 26px;
+}
+
+.mission-hero h2 {
+  margin: 4px 0 10px;
+  color: var(--hope-ink);
+  font-size: clamp(28px, 3vw, 44px);
+  letter-spacing: -.04em;
+}
+
+.mission-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mission-scoreboard a,
+.mini-project {
+  border: 1px solid var(--hope-line);
+  border-radius: 10px;
+  background: rgba(7, 8, 12, .56);
+  color: inherit;
+  text-decoration: none;
+}
+
+.mission-scoreboard a {
+  display: grid;
+  align-content: center;
+  min-height: 92px;
+  padding: 14px;
+}
+
+.mission-scoreboard strong {
+  color: var(--hope-ink);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.mission-scoreboard span,
+.mini-project span {
+  color: var(--hope-muted);
+  font-size: 12px;
+}
+
+.mission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.mission-panel,
+.agent-profile-card,
+.project-card-full,
+.skill-card-full {
+  border: 1px solid var(--hope-line);
+  border-radius: 10px;
+  background: var(--hope-panel);
+  box-shadow: 0 20px 70px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.035);
+  padding: 18px;
+}
+
+.mission-primary {
+  grid-row: span 2;
+}
+
+.work-mode-list,
+.mini-stack,
+.project-board,
+.roster-grid,
+.skill-list {
+  display: grid;
+  gap: 12px;
+}
+
+.work-mode-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  border: 1px solid var(--hope-line);
+  border-radius: 10px;
+  background: rgba(8, 10, 14, .58);
+  padding: 14px;
+}
+
+.work-mode-row strong,
+.mini-project strong {
+  display: block;
+  color: var(--hope-ink);
+}
+
+.work-mode-row span {
+  color: var(--hope-muted);
+}
+
+.mini-project {
+  display: block;
+  padding: 12px;
+}
+
 .hope-mode-grid {
   grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
 }
 
-.agent-grid {
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+.agent-grid,
+.roster-grid {
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
 }
 
-.project-grid {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+.project-grid,
+.project-board {
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 }
 
 .hope-card {
@@ -299,6 +415,21 @@
   align-items: start;
 }
 
+.agent-profile-card {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.agent-profile-card .card-actions {
+  grid-column: 1 / -1;
+}
+
+.agent-profile-main {
+  min-width: 0;
+}
+
 .agent-avatar {
   width: 74px;
   height: 98px;
@@ -318,11 +449,85 @@
   object-fit: cover;
 }
 
+.agent-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.agent-facts span,
+.skill-scoreboard span {
+  min-width: 0;
+  border: 1px solid var(--hope-line);
+  border-radius: 8px;
+  background: rgba(8, 10, 14, .64);
+  padding: 8px;
+}
+
+.agent-facts small,
+.skill-scoreboard small {
+  display: block;
+  color: var(--hope-dim);
+  font-size: 10px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+.agent-facts strong,
+.skill-scoreboard strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--hope-ink);
+  font-size: 13px;
+}
+
 .project-card progress {
   width: 100%;
   height: 10px;
   border-radius: 999px;
   accent-color: var(--hope-accent);
+}
+
+.project-card-full {
+  display: grid;
+  gap: 12px;
+}
+
+.project-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.project-card-head strong {
+  color: var(--hope-accent);
+  font-size: 28px;
+}
+
+.project-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.project-facts div {
+  border: 1px solid var(--hope-line);
+  border-radius: 8px;
+  background: rgba(8, 10, 14, .52);
+  padding: 10px;
+}
+
+.project-facts dt {
+  color: var(--hope-dim);
+  font-size: 10px;
+  letter-spacing: .10em;
+}
+
+.project-facts dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
 }
 
 .next-action {
@@ -390,9 +595,28 @@
 }
 
 .skill-card,
+.skill-card-full,
 .automation-list .hope-card,
 .connection-list .hope-card {
   align-items: flex-start;
+}
+
+.skill-card-full {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.skill-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, 74px);
+  gap: 8px;
+  text-align: center;
+}
+
+.skill-scoreboard strong {
+  font-size: 20px;
 }
 
 .card-actions {
@@ -549,6 +773,12 @@
   .authority-strip {
     justify-content: flex-start;
   }
+
+  .mission-hero,
+  .mission-grid,
+  .skill-router-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -558,5 +788,21 @@
 
   .authority-strip span {
     min-width: 0;
+  }
+
+  .mission-scoreboard,
+  .agent-facts,
+  .project-facts,
+  .skill-card-full,
+  .work-mode-row {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-profile-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .skill-scoreboard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
