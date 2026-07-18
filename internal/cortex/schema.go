@@ -27,12 +27,8 @@ CREATE TABLE IF NOT EXISTS memories (
     created_by TEXT NOT NULL,
     current_revision INTEGER NOT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    embedding BLOB NOT NULL DEFAULT ''
+    updated_at TEXT NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS memories_embedded_idx
-ON memories(lifecycle, length(embedding) > 0);
 
 CREATE INDEX IF NOT EXISTS memories_scope_idx
 ON memories(scope, scope_key, lifecycle);

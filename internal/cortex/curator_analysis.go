@@ -192,7 +192,9 @@ func curateMemory(
 	case evidence.imported:
 		suggestion.Category = CuratorProtected
 		suggestion.Reason = CuratorImported
-	case memory.Scope == ScopeGlobal || memory.Scope == ScopePrivate:
+	case memory.Scope == ScopePrivate:
+		// Private memories name a specific agent; let a human decide, since
+		// promoting them changes what that agent (and admins) see.
 		suggestion.Category = CuratorProtected
 		suggestion.Reason = CuratorProtectedScope
 	case memory.Kind == KindPreference || memory.Kind == KindProjectState:
