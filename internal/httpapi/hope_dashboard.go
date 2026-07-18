@@ -36,6 +36,10 @@ type hopeDashboardView struct {
 	Skills             []hope.Skill
 	SkillDetail        *hopeSkillDetailView
 	SkillID            string
+	EditAgentID        string
+	EditProjectID      string
+	AgentDetail        *hope.Agent
+	ProjectDetail      *hope.Project
 	Events             []hopeEventView
 	Jobs               any
 	JobsError          string
@@ -95,6 +99,7 @@ func (server *Server) hopeDashboard(writer http.ResponseWriter, request *http.Re
 		CSRFToken: session.CSRFToken, Section: section,
 		Notice:  hopeNotice(request.URL.Query().Get("notice")),
 		Pending: counts["candidate"], SkillID: strings.TrimSpace(request.URL.Query().Get("skill")),
+		EditAgentID: strings.TrimSpace(request.URL.Query().Get("agent")), EditProjectID: strings.TrimSpace(request.URL.Query().Get("project")),
 	}
 	for _, count := range counts {
 		view.TotalMemory += count
@@ -172,16 +177,22 @@ func (server *Server) loadHOPEAgents(ctx context.Context, view *hopeDashboardVie
 			view.Agents = append(view.Agents, presentAgent(item))
 		}
 		view.AgentCount = len(view.Agents)
-		return nil
+	} else {
+		agents, err := server.hope.Agents(ctx)
+		if err != nil {
+			return err
+		}
+		for _, agent := range agents {
+			view.Agents = append(view.Agents, hopeAgentView{Agent: agent, Initial: firstRune(agent.Name), State: "unknown", StateLabel: "ยังไม่ได้ตรวจ", CanOpen: agent.TelegramURL != ""})
+		}
+		view.AgentCount = len(view.Agents)
 	}
-	agents, err := server.hope.Agents(ctx)
-	if err != nil {
-		return err
+	if id := view.EditAgentID; id != "" {
+		agent, err := server.hope.Agent(ctx, id)
+		if err == nil {
+			view.AgentDetail = &agent
+		}
 	}
-	for _, agent := range agents {
-		view.Agents = append(view.Agents, hopeAgentView{Agent: agent, Initial: firstRune(agent.Name), State: "unknown", StateLabel: "ยังไม่ได้ตรวจ", CanOpen: agent.TelegramURL != ""})
-	}
-	view.AgentCount = len(view.Agents)
 	return nil
 }
 
@@ -204,6 +215,12 @@ func (server *Server) loadHOPEProjects(ctx context.Context, view *hopeDashboardV
 			return err
 		}
 		view.Roots = roots
+	}
+	if id := view.EditProjectID; id != "" {
+		project, err := server.hope.Project(ctx, id)
+		if err == nil {
+			view.ProjectDetail = &project
+		}
 	}
 	return nil
 }

@@ -120,6 +120,10 @@ func (plane *Plane) Projects(ctx context.Context) ([]hope.Project, error) {
 	return plane.store.Projects(ctx)
 }
 
+func (plane *Plane) Project(ctx context.Context, id string) (hope.Project, error) {
+	return plane.store.Project(ctx, id)
+}
+
 func (plane *Plane) ProjectRoots(ctx context.Context) ([]string, error) {
 	return plane.store.ProjectRoots(ctx)
 }

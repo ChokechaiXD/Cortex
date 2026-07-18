@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"cortex.local/cortex/internal/controlplane"
 	"cortex.local/cortex/internal/hope"
@@ -51,8 +52,8 @@ func (server *Server) hopeSaveProject(writer http.ResponseWriter, request *http.
 		Kind: request.FormValue("kind"), Description: request.FormValue("description"),
 		Goal: request.FormValue("goal"), Status: request.FormValue("status"),
 		Progress: progress, CurrentState: request.FormValue("current_state"),
-		NextAction: request.FormValue("next_action"), AgentIDs: request.Form["agents"],
-		Active: request.FormValue("active") != "no",
+		NextAction: request.FormValue("next_action"), AgentIDs: controlplane.ParseKeywords(strings.Join(request.Form["agents"], ",")),
+		Active: request.FormValue("active") == "yes",
 	}
 	if err := server.hope.SaveProject(request.Context(), project); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)

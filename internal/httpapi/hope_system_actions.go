@@ -122,7 +122,7 @@ func (server *Server) hopeSaveAgent(writer http.ResponseWriter, request *http.Re
 		AvatarPath: request.FormValue("avatar_path"), Summary: request.FormValue("summary"),
 		Capabilities: controlplane.ParseKeywords(request.FormValue("capabilities")),
 		PersonaPath:  request.FormValue("persona_path"), PersonaNote: request.FormValue("persona_note"),
-		Enabled: true,
+		Enabled: request.FormValue("enabled") == "yes",
 	}
 	createProfile := request.FormValue("create_profile") == "yes"
 	if err := server.hope.SaveAgent(request.Context(), agent, createProfile); err != nil {

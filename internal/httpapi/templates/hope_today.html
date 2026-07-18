@@ -1,22 +1,22 @@
 {{define "hope_today"}}
 <section class="mission-hero" aria-labelledby="mission-title">
   <div>
-    <p class="eyebrow">READY STATE</p>
-    <h2 id="mission-title">{{if eq .ProblemConnections 0}}ระบบพร้อมใช้งาน{{else}}มี service ที่ต้องตรวจ{{end}}</h2>
-    <p>เปิด service จากจุดเดียว ตรวจพอร์ตเดิมก่อนเสมอ และส่งต่อให้ Hermes / 9Router ทำหน้าที่ของตัวเอง</p>
+    <p class="eyebrow">SYSTEM READY</p>
+    <h2 id="mission-title">{{if eq .ProblemConnections 0}}พร้อมเริ่มงาน{{else}}ต้องเปิดบาง service{{end}}</h2>
+    <p>HOPE เป็นแผงควบคุมกลาง: เช็คสถานะ กดเปิดตัวจริง และเก็บความรู้เข้าที่เดียว</p>
   </div>
   <div class="mission-scoreboard" aria-label="ภาพรวมระบบ">
-    <a href="/?section=connections"><strong>{{.ReadyConnections}}/{{.TotalConnections}}</strong><span>Services ready</span></a>
+    <a href="/?section=connections"><strong>{{.ReadyConnections}}/{{.TotalConnections}}</strong><span>Services</span></a>
     <a href="/?section=agents"><strong>{{.AgentCount}}</strong><span>Agents</span></a>
     <a href="/?section=projects"><strong>{{.ActiveProjectCount}}</strong><span>Active projects</span></a>
-    <a href="/knowledge"><strong>{{.Pending}}</strong><span>Review queue</span></a>
+    <a href="/knowledge"><strong>{{.Pending}}</strong><span>To review</span></a>
   </div>
 </section>
 
 <section class="mission-grid" aria-label="งานหลักวันนี้">
   <article class="mission-panel mission-primary">
     <div class="section-head">
-      <div><p class="eyebrow">START MODE</p><h2>เริ่มงาน</h2></div>
+      <div><p class="eyebrow">START MODE</p><h2>เลือกโหมด</h2></div>
       <a class="quiet-link" href="/?section=connections">Services</a>
     </div>
     <div class="work-mode-list">
@@ -25,14 +25,14 @@
         <input type="hidden" name="csrf" value="{{$.CSRFToken}}">
         <div><strong>{{.Name}}</strong><span>{{.Description}}</span></div>
         <div class="chip-row">{{range .Integrations}}<span>{{.}}</span>{{end}}{{range .Agents}}<span>{{.}}</span>{{end}}</div>
-        <button name="action" value="start">Start</button>
+        <button name="action" value="start">Start mode</button>
       </form>
       {{else}}<p class="muted">ยังไม่มี Work Mode</p>{{end}}
     </div>
   </article>
 
   <article class="mission-panel">
-    <div class="section-head"><div><p class="eyebrow">PROJECTS</p><h2>งานที่กำลังเดิน</h2></div><a class="quiet-link" href="/?section=projects">จัดการ</a></div>
+    <div class="section-head"><div><p class="eyebrow">PROJECTS</p><h2>งานที่กำลังเดิน</h2></div><a class="quiet-link" href="/?section=projects">Open</a></div>
     <div class="mini-stack">
       {{range .ActiveProjects}}
       <a class="mini-project" href="/?section=projects">
@@ -44,7 +44,7 @@
   </article>
 
   <article class="mission-panel">
-    <div class="section-head"><div><p class="eyebrow">SERVICE STATUS</p><h2>ระบบที่เชื่อมต่อ</h2></div><a class="quiet-link" href="/?section=connections">เปิด/ปิด</a></div>
+    <div class="section-head"><div><p class="eyebrow">SERVICE STATUS</p><h2>ตัวที่ต้องเปิด</h2></div><a class="quiet-link" href="/?section=connections">Control</a></div>
     <div class="compact-list">{{range .Connections}}<div><span class="state-dot state-{{.State}}"></span><strong>{{.Name}}</strong><small>{{.StateLabel}}</small></div>{{end}}</div>
   </article>
 
@@ -55,16 +55,16 @@
 </section>
 
 <details class="hope-editor">
-  <summary>Manage work mode</summary>
+  <summary>Add / edit work mode</summary>
   <form method="post" action="/ui/hope/work-modes" class="hope-form">
     <input type="hidden" name="csrf" value="{{.CSRFToken}}">
     <label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="creative"></label>
     <label><span>Name</span><input name="name" required placeholder="Creative"></label>
-    <label class="wide"><span>Purpose</span><input name="description" placeholder="Open only what this workflow needs"></label>
+    <label class="wide"><span>What it opens</span><input name="description" placeholder="Open only what this workflow needs"></label>
     <fieldset class="wide"><legend>Services</legend><div class="chip-row">{{range .ModeSystems}}<label class="check-field"><input type="checkbox" name="integrations" value="{{.ID}}"> {{.Name}}</label>{{end}}</div></fieldset>
     <fieldset class="wide"><legend>Agents</legend><div class="chip-row">{{range .Agents}}<label class="check-field"><input type="checkbox" name="agents" value="{{.Agent.ID}}"> {{.Agent.Name}}</label>{{end}}</div></fieldset>
     <label class="check-field wide"><input type="checkbox" name="open_telegram" value="yes" checked> Open agent Telegram links</label>
-    <button>Save mode</button>
+    <button>Save work mode</button>
   </form>
 </details>
 {{end}}
