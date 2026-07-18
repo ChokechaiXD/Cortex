@@ -1,12 +1,26 @@
-# Cortex
+# HOPE
 
-Cortex is a standalone, local-first shared memory hub for AI agents. It keeps
-memory records, scores, usage events, reviews, and connector credentials under
-the user's control. Agent frameworks are adapters; they never own the database.
+HOPE is a standalone, local-first Agent Operating Hub. It gives one human-facing
+dashboard to start work modes, manage Hermes agents, organize projects and
+skills, inspect automations, and use the shared knowledge system. Cortex remains
+the stable memory kernel underneath HOPE. Agent frameworks and external services
+are adapters; they never own either database.
 
-## What v0.4 provides
+## What v0.5 provides
 
-- One Go executable and one SQLite database
+- One Go executable with two intentionally separate SQLite databases:
+  `cortex.db` for memory and `hope.db` for control-plane state
+- One-click Work Modes that reuse running processes and stop only processes
+  started and still verifiably owned by HOPE
+- Agent Center for existing Hermes profiles and new profile creation
+- Project Center with bounded workspace discovery and Windows folder opening
+- HOPE-owned Skill Center, read-only Hermes skill discovery, atomic deployment,
+  deterministic routing, and tracked success/failure feedback
+- Hermes cron visibility and manual run/pause/resume controls
+- Independent adapters for Hermes, 9Router, and Telegram links; removing or
+  stopping one external system does not corrupt HOPE or Cortex
+- Context Packs that combine token-budgeted Cortex recall with lightweight skill
+  recommendations, using the optional 9Router model only for ambiguous ties
 - WAL mode, FTS5 search, versioned schema migrations
 - Global, project, domain, and private scopes
 - Candidate → active → canonical review lifecycle
@@ -38,8 +52,9 @@ the user's control. Agent frameworks are adapters; they never own the database.
   OpenAI-compatible endpoint, with live model discovery and token budgets
 
 No cloud account, LLM, embedding model, Redis, PostgreSQL, Docker, or Node.js
-runtime is required. The optional model advisor is disabled by default and is
-never required for capture, recall, scoring, review, or automatic curation.
+runtime is required. The optional model advisor and skill tie-breaker are
+disabled by default and are never required for system control, capture, recall,
+scoring, review, deterministic skill routing, or automatic curation.
 
 ## Build
 
@@ -50,7 +65,19 @@ go build -trimpath -o bin\cortex.exe .\cmd\cortex
 Go 1.26 or newer is required to build. The resulting executable carries the
 dashboard and Hermes connector assets.
 
-## First run
+## First run without commands
+
+Double-click `Install HOPE.bat`. It initializes the local data directory when
+needed, disables the browser PIN for loopback-only use, syncs the Hermes bridge
+when Hermes is installed, installs user-level Windows autostart, starts HOPE,
+and opens the dashboard. It does not start 9Router or any Hermes agent gateway;
+those wait for a Work Mode or an explicit dashboard button.
+
+After installation, use **HOPE Dashboard** from the Windows Start Menu or
+double-click `Start HOPE.bat`. Both reuse the configured port and running
+process, so repeated clicks do not create duplicate listeners.
+
+## Operator fallback
 
 ```powershell
 bin\cortex.exe init
@@ -63,7 +90,7 @@ bin\cortex.exe service start
 its SHA-256 hash. The default data directory is `%LOCALAPPDATA%\Cortex`, and the
 default listener is `127.0.0.1:7777`.
 
-After the one-time setup, open **Cortex Dashboard** from the Windows Start Menu.
+After the one-time setup, open **HOPE Dashboard** from the Windows Start Menu.
 It reuses the configured loopback port, starts Cortex only when health checks say
 it is down, and opens the browser already signed in. The launcher proves its
 identity with a replay-protected HMAC request; Cortex exchanges a 30-second,
@@ -71,17 +98,16 @@ single-use code for an opaque browser session. Agent bearer tokens never enter
 the URL, browser storage, or launcher logs. The manual token form remains an
 emergency fallback.
 
-`Start Cortex.bat` in the repository provides the same one-click flow for users
-who prefer a batch file. It calls the installed launcher, reuses the configured
-port, and exits immediately.
+`Start Cortex.bat` remains as a compatibility alias. New installations should
+use `Start HOPE.bat`.
 
-Daily work is dashboard-only: search and review memories, use **Candidate
-Inbox** to inspect imported knowledge in small groups, tune each agent's memory
-routing and token budgets, restart or stop Cortex, and press **Discover &
-connect agents** whenever a new Hermes profile appears. Bulk review changes all
-selected records in one transaction or changes none of them. Connector and
-profile-setting actions create timestamped rollback snapshots before changing
-profiles. No terminal is needed for these operations.
+Daily work is dashboard-only: choose a Work Mode; open or stop HOPE-owned
+gateways; add agents; discover projects; create, route, and deploy skills;
+inspect Hermes automations; and use **Knowledge** for search, review, Curator,
+and model-advisor controls. Bulk review changes all selected records in one
+transaction or changes none of them. Connector and profile-setting actions
+create timestamped rollback snapshots before changing profiles. No terminal is
+needed for these operations.
 
 The dashboard also exposes **Cortex Curator**. Its free deterministic gate can
 organize review work after a configurable number of durable memory events. In
@@ -139,6 +165,8 @@ automatically. Repeating an unchanged import is idempotent.
 | `GET` | `/v1/capabilities` | Protocol features |
 | `POST` | `/v1/memories` | Create or revise candidate memory |
 | `POST` | `/v1/recalls` | Search visible reviewed memory |
+| `POST` | `/v1/context-packs` | Recall memory plus relevant HOPE skills |
+| `POST` | `/v1/context-packs/{pack}/skills/{skill}/feedback` | Track skill use/success/failure idempotently |
 | `POST` | `/v1/memories/{id}/feedback` | Update truth or utility evidence |
 | `POST` | `/v1/memories/{id}/review` | Governor lifecycle decision |
 | `GET` | `/v1/memories/{id}/history` | Read append-only audit history |
@@ -155,7 +183,7 @@ python -m unittest discover -s connectors\hermes\tests -p "test_*.py"
 go vet ./...
 ```
 
-See [Architecture](docs/architecture.md), [core specification](docs/spec.md),
+See [HOPE control plane](docs/hope.md), [Architecture](docs/architecture.md), [core specification](docs/spec.md),
 [Curator](docs/curator.md), and [Model advisor](docs/model-advisor.md) for module
 boundaries and invariants. See [Operations](docs/operations.md) for live status,
 agent onboarding, upgrades, and rollback.

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HOPE · Agent Operating Hub</title>
+  <link rel="stylesheet" href="/static/cortex.css">
+  <link rel="stylesheet" href="/static/hope.css">
+</head>
+<body class="hope-body">
+  <aside class="hope-sidebar">
+    <a class="hope-brand" href="/"><span>H</span><strong>HOPE</strong><small>Agent Operating Hub</small></a>
+    <nav aria-label="เมนูหลัก">
+      <a class="{{if eq .Section "today"}}active{{end}}" href="/?section=today">วันนี้</a>
+      <a class="{{if eq .Section "agents"}}active{{end}}" href="/?section=agents">Agents</a>
+      <a class="{{if eq .Section "projects"}}active{{end}}" href="/?section=projects">Projects</a>
+      <a class="{{if eq .Section "skills"}}active{{end}}" href="/?section=skills">Skills</a>
+      <a href="/knowledge">Knowledge</a>
+      <a class="{{if eq .Section "automations"}}active{{end}}" href="/?section=automations">Automations</a>
+      <a class="{{if eq .Section "connections"}}active{{end}}" href="/?section=connections">Connections</a>
+      <a class="{{if eq .Section "settings"}}active{{end}}" href="/?section=settings">Settings</a>
+    </nav>
+    <div class="hope-sidebar-foot"><span class="live-dot"></span> ทำงานในเครื่อง</div>
+  </aside>
+
+  <main class="hope-main">
+    <header class="hope-page-head">
+      <div><p class="eyebrow">HOPE OPERATING HUB</p><h1>{{if eq .Section "today"}}Command Center{{else if eq .Section "agents"}}Agent Roster{{else if eq .Section "projects"}}Project Tracker{{else if eq .Section "skills"}}Skill Library{{else if eq .Section "automations"}}Automation Board{{else if eq .Section "connections"}}Service Control{{else}}Settings{{end}}</h1></div>
+      <div class="hope-user">{{.AgentID}}</div>
+    </header>
+    {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+
+    {{if eq .Section "today"}}
+      <section class="hope-hero">
+        <div><p class="eyebrow">LOCAL CONTROL</p><h2>เปิดระบบจากจุดเดียว</h2><p>HOPE ตรวจสถานะ ใช้ process เดิมเมื่อเปิดอยู่ และไม่เปิดพอร์ตซ้ำ</p></div>
+        <div class="hope-memory-mini"><strong>{{.TotalMemory}}</strong><span>ความรู้ร่วม</span><a href="/knowledge">เปิดคลังความรู้</a></div>
+      </section>
+      <section class="hope-grid hope-mode-grid">
+        {{range .Modes}}
+        <article class="hope-card mode-card">
+          <p class="eyebrow">WORK MODE</p><h2>{{.Name}}</h2><p>{{.Description}}</p>
+          <div class="chip-row">{{range .Integrations}}<span>{{.}}</span>{{end}}{{range .Agents}}<span>{{.}}</span>{{end}}</div>
+          <form method="post" action="/ui/hope/work-modes/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button name="action" value="start">เริ่มโหมดนี้</button><button class="quiet" name="action" value="stop">หยุดที่ HOPE เปิด</button></form>
+        </article>
+        {{end}}
+      </section>
+      <details class="hope-editor"><summary>Manage work mode</summary><form method="post" action="/ui/hope/work-modes" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="creative"></label><label><span>Name</span><input name="name" required placeholder="Creative"></label><label class="wide"><span>Purpose</span><input name="description" placeholder="Open the services and agents for this workflow"></label><fieldset class="wide"><legend>Services</legend><div class="chip-row">{{range .ModeSystems}}<label class="check-field"><input type="checkbox" name="integrations" value="{{.ID}}"> {{.Name}}</label>{{end}}</div></fieldset><fieldset class="wide"><legend>Agents</legend><div class="chip-row">{{range .Agents}}<label class="check-field"><input type="checkbox" name="agents" value="{{.Agent.ID}}"> {{.Agent.Name}}</label>{{end}}</div></fieldset><label class="check-field wide"><input type="checkbox" name="open_telegram" value="yes" checked> Open agent Telegram links</label><button>Save mode</button></form></details>
+      <section class="hope-two-column">
+        <div><div class="section-head"><div><p class="eyebrow">SERVICES</p><h2>ระบบที่เปิดอยู่</h2></div><a class="quiet-link" href="/?section=connections">จัดการ</a></div>
+          <div class="compact-list">{{range .Connections}}<div><span class="state-dot state-{{.State}}"></span><strong>{{.Name}}</strong><small>{{.StateLabel}}</small></div>{{end}}</div>
+        </div>
+        <div><div class="section-head"><div><p class="eyebrow">LOG</p><h2>กิจกรรมล่าสุด</h2></div></div>
+          <div class="activity-list">{{range .Events}}<div><span>{{.When}}</span><strong>{{.Target}} · {{.Action}}</strong><small>{{.Message}}</small></div>{{else}}<p class="muted">ยังไม่มีกิจกรรม</p>{{end}}</div>
+        </div>
+      </section>
+    {{end}}
+
+    {{if eq .Section "agents"}}
+      <section class="hope-grid agent-grid">
+      {{range .Agents}}
+        <article class="hope-card agent-card"><div class="agent-avatar">{{if .Agent.AvatarPath}}<img src="{{.Agent.AvatarPath}}" alt="">{{else}}{{.Initial}}{{end}}</div><div><p class="eyebrow">{{.Agent.Role}}</p><h2>{{.Agent.Name}}</h2><p>{{if .Agent.Summary}}{{.Agent.Summary}}{{else}}Hermes profile: {{.Agent.Profile}}{{end}}</p><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><div class="chip-row">{{range .Agent.Capabilities}}<span>{{.}}</span>{{end}}</div></div>
+          <form method="post" action="/ui/hope/agents/{{.Agent.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}">{{if .CanStart}}<button name="action" value="start">เปิด Agent</button>{{end}}{{if .CanStop}}<button class="danger" name="action" value="stop">ปิด Agent</button>{{end}}{{if .CanOpen}}<a class="button-link quiet" href="{{.Agent.TelegramURL}}" target="_blank" rel="noreferrer">เปิด Telegram</a>{{end}}</form>
+        </article>
+      {{end}}
+      </section>
+      <details class="hope-editor"><summary>Manage agent</summary><form method="post" action="/ui/hope/agents" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="sora"></label><label><span>Display name</span><input name="name" required></label><label><span>Role</span><input name="role" placeholder="Coding, Research, Image"></label><label><span>Hermes profile</span><input name="profile" required></label><label class="wide"><span>Short summary</span><input name="summary" placeholder="What this agent is good at"></label><label class="wide"><span>Capabilities</span><input name="capabilities" placeholder="code review, refactor, deploy"></label><label class="wide"><span>Avatar URL or local static path</span><input name="avatar_path" placeholder="/static/agents/sora.png"></label><label class="wide"><span>Persona file</span><input name="persona_path" placeholder="C:\Users\...\Sora.md"></label><label class="wide"><span>Persona notes</span><textarea name="persona_note" rows="5"></textarea></label><label class="wide"><span>Telegram URL</span><input name="telegram_url" type="url" placeholder="https://web.telegram.org/..."></label><label class="check-field wide"><input type="checkbox" name="create_profile" value="yes"> Create Hermes profile</label><button>Save agent</button></form></details>
+    {{end}}
+
+    {{if eq .Section "projects"}}
+      <section class="hope-toolbar"><form method="post" action="/ui/hope/projects/discover"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button>Scan roots</button></form><p>Project คือ context งาน ไม่ใช่แค่ folder link</p></section>
+      <section class="hope-grid project-grid">{{range .Projects}}<article class="hope-card project-card"><p class="eyebrow">{{.Kind}} · {{.Status}}</p><h2>{{.Name}}</h2><p>{{.Description}}</p><progress value="{{.Progress}}" max="100">{{.Progress}}%</progress><small>{{.Progress}}% · {{if .CurrentState}}{{.CurrentState}}{{else}}ยังไม่มี state{{end}}</small>{{if .NextAction}}<p class="next-action">Next: {{.NextAction}}</p>{{end}}<div class="chip-row">{{range .AgentIDs}}<span>{{.}}</span>{{end}}</div>{{if .Path}}<p class="path-text">{{.Path}}</p>{{end}}<form method="post" action="/ui/hope/projects/{{.ID}}/delete"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button class="danger">Remove</button></form></article>{{else}}<div class="empty"><h2>No projects</h2><p>Add a project tracker below.</p></div>{{end}}</section>
+      <details class="hope-editor" open><summary>Manage project</summary><form method="post" action="/ui/hope/projects" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID</span><input name="id" required pattern="[a-z0-9_-]+" placeholder="cortex"></label><label><span>Name</span><input name="name" required></label><label><span>Type</span><input name="kind" placeholder="app, novel, infra"></label><label><span>Status</span><select name="status"><option value="active">active</option><option value="paused">paused</option><option value="done">done</option></select></label><label class="wide"><span>Folder path</span><input name="path" placeholder="optional"></label><label class="wide"><span>What is this project?</span><input name="description"></label><label class="wide"><span>Goal</span><input name="goal"></label><label><span>Progress</span><input name="progress" type="number" min="0" max="100" value="0"></label><label><span>Assigned agents</span><select name="agents" multiple size="4">{{range .Agents}}<option value="{{.Agent.ID}}">{{.Agent.Name}}</option>{{end}}</select></label><label class="wide"><span>Current state</span><textarea name="current_state" rows="4"></textarea></label><label class="wide"><span>Next action</span><input name="next_action"></label><button>Save project</button></form></details>
+      <details class="hope-editor"><summary>Workspace roots</summary><form method="post" action="/ui/hope/projects/roots" class="inline-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><input name="path" required placeholder="C:\Users\...\Workspace"><button>Add root</button></form><div class="chip-row">{{range .Roots}}<span>{{.}}</span>{{end}}</div></details>
+    {{end}}
+
+    {{if eq .Section "skills"}}
+      <section class="hope-toolbar"><form method="post" action="/ui/hope/skills/sync"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button>Refresh skills</button></form><form method="post" action="/ui/hope/skills/import" class="inline-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><input name="github_url" type="url" required placeholder="https://github.com/owner/repo"><button>Install from GitHub</button></form></section>
+      <section class="skill-router-panel"><div><p class="eyebrow">SMART ROUTER</p><h2>ลองหาว่าควรใช้ Skill ไหน</h2><p>ใช้คำค้น บทบาท Project และประวัติผลลัพธ์ก่อน ไม่เสีย token</p></div><form method="post" action="/ui/hope/skills/route" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label class="wide"><span>งานที่กำลังจะทำ</span><input name="query" required placeholder="เช่น ตรวจโครงสร้างโค้ดและลดความซ้ำซ้อน"></label><label><span>Agent</span><select name="agent_id"><option value="">ไม่ระบุ</option>{{range .Agents}}<option value="{{.Agent.ID}}">{{.Agent.Name}}</option>{{end}}</select></label><label><span>Project</span><select name="project_id"><option value="">ไม่ระบุ</option>{{range .Projects}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label><input type="hidden" name="limit" value="3"><button>แนะนำ Skill</button></form></section>
+      <section class="skill-list">{{range .Skills}}<article class="hope-card skill-card"><div><p class="eyebrow">{{.Source}}</p><h2>{{.Name}}</h2><p>{{.Description}}</p><div class="chip-row">{{range .Keywords}}<span>{{.}}</span>{{end}}</div><small>Used {{.UseCount}} · Success {{.SuccessCount}} · Failed {{.FailureCount}}</small></div><div class="card-actions"><a class="button-link quiet" href="/?section=skills&skill={{.ID}}">Details</a>{{if eq .Source "hope"}}<form method="post" action="/ui/hope/skills/{{.ID}}/deploy"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button>Deploy</button></form>{{end}}</div></article>{{else}}<div class="empty"><h2>No skills indexed</h2><p>Refresh skills to index metadata without loading every file into context.</p></div>{{end}}</section>
+      {{with .SkillDetail}}<section class="hope-card skill-detail"><p class="eyebrow">{{.Skill.Source}}</p><h2>{{.Skill.Name}}</h2>{{if eq .Skill.Source "hope"}}<form method="post" action="/ui/hope/skills/{{.Skill.ID}}" class="hope-form"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><label><span>Name</span><input name="name" required value="{{.Skill.Name}}"></label><label><span>Agent</span><input name="role" value="{{.Skill.Role}}"></label><label class="wide"><span>Description</span><input name="description" required value="{{.Skill.Description}}"></label><label><span>Project</span><input name="project" value="{{.Skill.Project}}"></label><label><span>Keywords</span><input name="keywords" value="{{range $i, $kw := .Skill.Keywords}}{{if $i}}, {{end}}{{$kw}}{{end}}"></label><label class="wide"><span>Instructions</span><textarea name="body" rows="16" required>{{.Body}}</textarea></label><button>Save skill</button></form>{{else}}<p>{{.Skill.Description}}</p><pre class="skill-readonly">{{.Body}}</pre>{{end}}</section>{{end}}
+      <details class="hope-editor"><summary>สร้างหรือแก้ Skill</summary><form method="post" action="/ui/hope/skills" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label><span>ID (ใช้ ID เดิมเพื่อแก้)</span><input name="id" pattern="[a-z0-9_-]+"></label><label><span>ชื่อ</span><input name="name" required></label><label class="wide"><span>อธิบายว่าใช้เมื่อไร</span><input name="description" required></label><label class="wide"><span>Keywords</span><input name="keywords" placeholder="refactor, simplify, architecture"></label><label><span>Agent</span><input name="role" placeholder="sora"></label><label><span>Project</span><input name="project" placeholder="cortex"></label><label class="wide"><span>คำแนะนำของ Skill</span><textarea name="body" rows="10" required></textarea></label><button>บันทึกใน HOPE</button></form></details>
+    {{end}}
+
+    {{if eq .Section "automations"}}
+      {{if .JobsError}}<p class="notice">อ่าน Hermes cron ไม่ได้: {{.JobsError}}</p>{{end}}
+      <section class="automation-list">{{range .Jobs}}<article class="hope-card"><div><p class="eyebrow">{{.Status}}</p><h2>{{.Name}}</h2><p>{{.Schedule}}</p><small>Next: {{.NextRun}}{{if .LastRun}} · Last: {{.LastRun}}{{end}}</small></div><form method="post" action="/ui/hope/automations/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}"><button name="action" value="run">รันตอนนี้</button>{{if eq .Status "active"}}<button class="quiet" name="action" value="pause">พัก</button>{{else}}<button class="quiet" name="action" value="resume">ทำงานต่อ</button>{{end}}</form></article>{{else}}<div class="empty"><h2>ไม่พบ Automation</h2><p>Hermes ยังทำหน้าที่ scheduler; HOPE แสดงและควบคุมเท่านั้น</p></div>{{end}}</section>
+    {{end}}
+
+    {{if eq .Section "connections"}}
+      <section class="connection-list">{{range .Connections}}<article class="hope-card"><div><p class="eyebrow">CONNECTION</p><h2>{{.Name}}</h2><p><span class="state-dot state-{{.State}}"></span>{{.StateLabel}}</p><small>{{.Detail}}</small></div><form method="post" action="/ui/hope/integrations/{{.ID}}"><input type="hidden" name="csrf" value="{{$.CSRFToken}}">{{if .CanStart}}<button name="action" value="start">เปิด</button>{{end}}{{if .CanStop}}<button class="danger" name="action" value="stop">ปิดที่ HOPE เปิด</button>{{end}}{{if .URL}}<button class="quiet" name="action" value="open">เปิดหน้าต่างเดิม</button>{{end}}</form></article>{{end}}</section>
+      <p class="safety-note">HOPE ไม่หยุด process ภายนอก ไม่ลบ config ของระบบอื่น และจะปฏิเสธการเปิดเมื่อพอร์ตถูกใช้งานแบบไม่ทราบที่มา</p>
+    {{end}}
+
+    {{if eq .Section "settings"}}
+      <section class="hope-card settings-card"><p class="eyebrow">LOCAL ACCESS</p><h2>การเข้าใช้หน้า HOPE</h2><p>Agent API ยังใช้ token ที่ซ่อนไว้เสมอ การตั้งค่านี้มีผลเฉพาะหน้าเว็บ</p><form method="post" action="/ui/hope/security" class="hope-form"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><label class="check-field wide"><input type="checkbox" name="pin_enabled" value="yes" {{if not .Passwordless}}checked{{end}}> ถาม PIN ก่อนเปิดหน้าเว็บ</label><label><span>PIN ใหม่ 4–8 หลัก</span><input name="pin" inputmode="numeric" pattern="[0-9]{4,8}" placeholder="4826"></label><button>บันทึก</button></form><p class="muted">เมื่อปิด PIN หน้าเว็บเข้าได้อัตโนมัติเฉพาะ loopback; HOPE ไม่รับ LAN binding</p></section>
+    {{end}}
+  </main>
+</body>
+</html>

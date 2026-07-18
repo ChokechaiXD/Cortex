@@ -8,7 +8,7 @@ import (
 	"cortex.local/cortex/internal/autostart"
 )
 
-const version = "0.4.0"
+const version = "0.5.0"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -50,13 +50,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(writer io.Writer) {
-	fmt.Fprintln(writer, `Cortex - standalone local memory hub
+	fmt.Fprintln(writer, `HOPE - local Agent Operating Hub powered by Cortex Memory Kernel
 
 Usage:
   cortex init [--data-dir DIR] [--admin AGENT] [--listen ADDRESS]
   cortex agent add --id AGENT [--admin] [--data-dir DIR]
   cortex agent token --id AGENT [--data-dir DIR]
-  cortex dashboard pin --value PIN [--data-dir DIR]
+  cortex dashboard pin --value PIN|--off [--data-dir DIR]
   cortex connector sync hermes --home HERMES_HOME [--data-dir DIR]
   cortex import holographic --database MEMORY_STORE_DB --agent AGENT [--project PROJECT]
   cortex serve [--data-dir DIR] [--listen ADDRESS]

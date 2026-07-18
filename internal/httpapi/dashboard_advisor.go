@@ -1,11 +1,8 @@
 package httpapi
 
 import (
-	"context"
 	"net/http"
-	"slices"
 	"strings"
-	"time"
 
 	"cortex.local/cortex/internal/cortex"
 	"cortex.local/cortex/internal/intelligence"
@@ -100,18 +97,9 @@ func (server *Server) advisorSettings(writer http.ResponseWriter, request *http.
 	}
 	enabled := request.FormValue("enabled") == "yes"
 	model := strings.TrimSpace(request.FormValue("model"))
-	if enabled {
-		ctx, cancel := context.WithTimeout(request.Context(), 5*time.Second)
-		defer cancel()
-		models, listErr := server.advisor.Models(ctx, endpoint)
-		if listErr != nil {
-			http.Error(writer, "ตรวจรายการโมเดลไม่ได้: "+listErr.Error(), http.StatusBadGateway)
-			return
-		}
-		if !slices.ContainsFunc(models, func(candidate intelligence.Model) bool { return candidate.ID == model }) {
-			http.Error(writer, "โมเดลที่เลือกไม่มีอยู่ใน endpoint ปัจจุบัน", http.StatusBadRequest)
-			return
-		}
+	if enabled && model == "" {
+		http.Error(writer, "model is required when advisor is enabled", http.StatusBadRequest)
+		return
 	}
 	_, err = server.hub.UpdateAdvisorSettings(request.Context(), cortex.UpdateAdvisorSettingsCommand{
 		ActorID: session.AgentID, Enabled: enabled, Endpoint: endpoint, Model: model,
@@ -122,7 +110,7 @@ func (server *Server) advisorSettings(writer http.ResponseWriter, request *http.
 		writeDomainError(writer, err)
 		return
 	}
-	http.Redirect(writer, request, "/?advisor=settings", http.StatusSeeOther)
+	http.Redirect(writer, request, "/knowledge?advisor=settings", http.StatusSeeOther)
 }
 
 func (server *Server) advisorRun(writer http.ResponseWriter, request *http.Request) {

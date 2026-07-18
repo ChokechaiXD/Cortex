@@ -72,19 +72,32 @@ func runAgent(args []string, stdout, stderr io.Writer) int {
 
 func runDashboard(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] != "pin" {
-		fmt.Fprintln(stderr, "usage: cortex dashboard pin --value PIN [--data-dir DIR]")
+		fmt.Fprintln(stderr, "usage: cortex dashboard pin --value PIN|--off [--data-dir DIR]")
 		return 2
 	}
 	flags := flag.NewFlagSet("dashboard pin", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	dataDir := flags.String("data-dir", config.DefaultDataDir(), "Cortex data directory")
 	value := flags.String("value", "", "4 to 8 digit dashboard PIN")
+	off := flags.Bool("off", false, "disable the dashboard PIN for loopback access")
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
 	if flags.NArg() != 0 {
-		fmt.Fprintln(stderr, "usage: cortex dashboard pin --value PIN [--data-dir DIR]")
+		fmt.Fprintln(stderr, "usage: cortex dashboard pin --value PIN|--off [--data-dir DIR]")
 		return 2
+	}
+	if *off {
+		if *value != "" {
+			fmt.Fprintln(stderr, "--value and --off cannot be used together")
+			return 2
+		}
+		if err := config.ClearDashboardPIN(*dataDir); err != nil {
+			fmt.Fprintf(stderr, "disable dashboard PIN: %v\n", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, "dashboard_pin=disabled")
+		return 0
 	}
 	if err := config.SetDashboardPIN(*dataDir, *value); err != nil {
 		fmt.Fprintf(stderr, "set dashboard PIN: %v\n", err)

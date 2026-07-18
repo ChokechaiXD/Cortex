@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"cortex.local/cortex/internal/config"
 	"cortex.local/cortex/internal/hermes"
 )
 
@@ -142,6 +143,17 @@ func (runtime *Runtime) UpdateAgentSettings(
 	return hermes.UpdateProfileSettings(hermes.UpdateProfileSettingsOptions{
 		HermesHome: defaultHermesHome(), DataDir: runtime.dataDir, RootAgent: "mika", Settings: settings,
 	})
+}
+
+func (runtime *Runtime) UpdateDashboardPIN(enabled bool, pin string) error {
+	if err := runtime.beginHermesWrite(); err != nil {
+		return err
+	}
+	defer runtime.endHermesWrite()
+	if !enabled {
+		return config.ClearDashboardPIN(runtime.dataDir)
+	}
+	return config.SetDashboardPIN(runtime.dataDir, pin)
 }
 
 func (runtime *Runtime) beginHermesWrite() error {

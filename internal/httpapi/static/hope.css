@@ -1,0 +1,275 @@
+.hope-body {
+  --hope-bg: #eef1f5;
+  --hope-panel: #f8fafc;
+  --hope-panel-strong: #ffffff;
+  --hope-ink: #252b35;
+  --hope-muted: #687385;
+  --hope-line: #d7dde7;
+  --hope-accent: #5f7892;
+  --hope-accent-strong: #33485f;
+  --hope-gold: #b99248;
+  --hope-good: #2f8b57;
+  --hope-warn: #b56b24;
+  --hope-danger: #9b3b45;
+  background:
+    linear-gradient(135deg, #f7f9fc 0 20%, transparent 20% 80%, #e3e8ef 80%),
+    var(--hope-bg);
+  color: var(--hope-ink);
+  grid-template-columns: 236px minmax(0, 1fr);
+}
+
+.hope-sidebar {
+  background: rgba(255,255,255,.78);
+  border-right: 1px solid var(--hope-line);
+  color: var(--hope-ink);
+  backdrop-filter: blur(10px);
+}
+
+.hope-brand,
+.hope-sidebar nav a {
+  color: var(--hope-ink);
+}
+
+.hope-brand > span {
+  border-radius: 6px;
+  background: #1f2732;
+  color: #f5f7fb;
+  box-shadow: none;
+}
+
+.hope-brand small,
+.hope-sidebar-foot,
+.hope-card p,
+.hope-toolbar p,
+.muted {
+  color: var(--hope-muted);
+}
+
+.hope-sidebar nav a {
+  border-radius: 6px;
+}
+
+.hope-sidebar nav a:hover,
+.hope-sidebar nav a.active {
+  background: #e7ebf2;
+  color: var(--hope-ink);
+}
+
+.hope-sidebar nav a.active {
+  box-shadow: inset 3px 0 var(--hope-accent);
+}
+
+.hope-main {
+  width: min(1440px, 100%);
+  padding: 32px 40px 72px;
+}
+
+.hope-page-head {
+  margin-bottom: 22px;
+}
+
+.hope-page-head h1 {
+  font-size: clamp(30px, 3vw, 48px);
+  letter-spacing: 0;
+}
+
+.hope-user,
+.chip-row span {
+  border-radius: 6px;
+  border-color: var(--hope-line);
+  color: var(--hope-muted);
+  background: #f7f9fc;
+}
+
+.hope-hero,
+.hope-card,
+.hope-toolbar,
+.hope-editor,
+.compact-list,
+.activity-list,
+.skill-router-panel {
+  border-color: var(--hope-line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.82);
+  box-shadow: none;
+}
+
+.hope-hero {
+  grid-template-columns: minmax(0,1fr) 180px;
+  padding: 24px;
+}
+
+.hope-hero h2,
+.hope-card h2,
+.section-head h2,
+.skill-router-panel h2 {
+  color: var(--hope-ink);
+  letter-spacing: 0;
+}
+
+.hope-memory-mini {
+  border-radius: 8px;
+  border: 1px solid var(--hope-line);
+  background: #f7f9fc;
+}
+
+.hope-memory-mini a {
+  color: var(--hope-accent-strong);
+}
+
+.hope-mode-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.agent-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.project-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.hope-card {
+  padding: 18px;
+}
+
+.hope-card button,
+.hope-form button,
+.hope-toolbar button,
+.inline-form button,
+.button-link {
+  border-radius: 6px;
+  background: var(--hope-accent-strong);
+  color: #fff;
+  min-height: 40px;
+}
+
+.hope-card button.quiet,
+.button-link.quiet {
+  background: #e7ebf2;
+  color: var(--hope-ink);
+}
+
+.hope-card button.danger {
+  background: #f3e2e4;
+  color: var(--hope-danger);
+}
+
+.agent-card {
+  grid-template-columns: 72px 1fr;
+  align-items: start;
+}
+
+.agent-avatar {
+  width: 70px;
+  height: 92px;
+  border-radius: 6px;
+  border: 1px solid #aeb7c5;
+  background: #dce2ea;
+  color: var(--hope-accent-strong);
+  overflow: hidden;
+}
+
+.agent-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.project-card progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--hope-accent);
+}
+
+.next-action {
+  border-left: 3px solid var(--hope-gold);
+  padding-left: 10px;
+}
+
+.hope-form input,
+.hope-form select,
+.hope-form textarea,
+.inline-form input {
+  background: #fff;
+  border-color: #cfd6e0;
+  border-radius: 6px;
+  color: var(--hope-ink);
+}
+
+.hope-form fieldset {
+  border: 1px solid var(--hope-line);
+  border-radius: 8px;
+}
+
+.hope-toolbar {
+  flex-wrap: wrap;
+}
+
+.hope-toolbar .inline-form {
+  flex: 1 1 420px;
+  margin: 0;
+}
+
+.hope-toolbar .inline-form input {
+  min-width: 220px;
+}
+
+.skill-detail {
+  margin-top: 18px;
+}
+
+.skill-readonly {
+  max-height: 560px;
+  overflow: auto;
+  border: 1px solid var(--hope-line);
+  border-radius: 6px;
+  background: #f7f9fc;
+  color: var(--hope-ink);
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
+.skill-card,
+.automation-list .hope-card,
+.connection-list .hope-card {
+  align-items: flex-start;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.state-running,
+.state-external {
+  background: var(--hope-good);
+  box-shadow: 0 0 0 4px rgba(47,139,87,.14);
+}
+
+.state-stopped,
+.state-missing {
+  background: var(--hope-muted);
+  box-shadow: 0 0 0 4px rgba(104,115,133,.14);
+}
+
+.state-conflict,
+.state-degraded {
+  background: var(--hope-warn);
+  box-shadow: 0 0 0 4px rgba(181,107,36,.14);
+}
+
+.notice {
+  border-color: #c7d5e5;
+  background: #f7fbff;
+  color: var(--hope-accent-strong);
+}
+
+@media (max-width: 980px) {
+  .hope-main {
+    padding: 22px 16px 56px;
+  }
+}

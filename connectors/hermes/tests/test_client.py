@@ -62,6 +62,24 @@ class CortexClientTest(unittest.TestCase):
         with self.assertRaisesRegex(CortexError, "rejected"):
             self.client.remember({"content": "bad"})
 
+    def test_context_pack_and_skill_feedback_use_tracked_routes(self):
+        self.client.context_pack({"text": "design an api"}, "pack-request")
+        self.client.skill_feedback(
+            "pack_123", "api-design", {"outcome": "success"}, "feedback-request"
+        )
+
+        pack_path, pack_headers, pack_payload = RecordingHandler.requests[0]
+        self.assertEqual(pack_path, "/v1/context-packs")
+        self.assertEqual(pack_headers["Idempotency-Key"], "pack-request")
+        self.assertEqual(pack_payload["text"], "design an api")
+        feedback_path, feedback_headers, feedback_payload = RecordingHandler.requests[1]
+        self.assertEqual(
+            feedback_path,
+            "/v1/context-packs/pack_123/skills/api-design/feedback",
+        )
+        self.assertEqual(feedback_headers["Idempotency-Key"], "feedback-request")
+        self.assertEqual(feedback_payload["outcome"], "success")
+
     def test_private_json_write_is_atomic_and_protected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "cortex.json"

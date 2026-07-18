@@ -46,6 +46,46 @@ class FakeClient:
             "truncated": True,
         }
 
+    def context_pack(self, payload: dict) -> dict:
+        self.payloads.append(payload)
+        return {
+            "id": "pack_1",
+            "memory": {
+                "id": "rec_1",
+                "items": [
+                    {
+                        "memory": {
+                            "id": "mem_1",
+                            "kind": "fact",
+                            "content": "Use the canonical output.",
+                            "truth_score": 0.9,
+                            "utility_score": 0.8,
+                        }
+                    }
+                ],
+                "token_budget": payload["memory_token_budget"],
+                "estimated_tokens": 140,
+                "truncated": True,
+            },
+            "skills": [
+                {
+                    "id": "api-design",
+                    "description": "Design stable APIs",
+                    "reason": "ตรงกับงาน",
+                }
+            ],
+        }
+
+    def skill_feedback(self, context_pack_id: str, skill_id: str, payload: dict) -> dict:
+        self.payloads.append(
+            {
+                "context_pack_id": context_pack_id,
+                "skill_id": skill_id,
+                **payload,
+            }
+        )
+        return {"status": "ok"}
+
 
 class AutoCaptureClient:
     def __init__(self):
@@ -77,9 +117,11 @@ class CortexProviderBudgetTest(unittest.TestCase):
         provider._client = client
 
         rendered = provider.prefetch("canonical output")
-        self.assertEqual(client.payloads[0]["token_budget"], 700)
+        self.assertEqual(client.payloads[0]["memory_token_budget"], 700)
         self.assertIn("140/700 tokens", rendered)
         self.assertIn("trimmed", rendered)
+        self.assertIn("context_pack_id=pack_1", rendered)
+        self.assertIn("api-design", rendered)
 
         response = json.loads(
             provider.handle_tool_call(
@@ -88,6 +130,26 @@ class CortexProviderBudgetTest(unittest.TestCase):
         )
         self.assertEqual(client.payloads[1]["token_budget"], 240)
         self.assertEqual(response["token_budget"], 240)
+
+    def test_feedback_reports_skill_outcome_without_a_second_tool_schema(self):
+        provider = CortexMemoryProvider()
+        client = FakeClient()
+        provider._client = client
+
+        response = json.loads(
+            provider.handle_tool_call(
+                "cortex_feedback",
+                {
+                    "context_pack_id": "pack_1",
+                    "skill_id": "api-design",
+                    "outcome": "success",
+                },
+            )
+        )
+
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(client.payloads[0]["context_pack_id"], "pack_1")
+        self.assertEqual(client.payloads[0]["skill_id"], "api-design")
 
     def test_recall_schema_exposes_safe_budget_range(self):
         properties = RECALL_SCHEMA["parameters"]["properties"]

@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cortex · คลังความรู้</title>
+  <title>HOPE · Knowledge Center</title>
   <link rel="stylesheet" href="/static/cortex.css">
 </head>
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">ทำงานในเครื่อง · ข้อมูลเป็นของเรา</p>
-      <h1>Cortex</h1>
+      <p class="eyebrow">HOPE · Cortex Memory Kernel</p>
+      <h1>Knowledge Center</h1>
     </div>
     <div class="topbar-actions">
-      {{if .Advanced}}<a class="mode-link" href="/">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
+      <a class="mode-link" href="/">กลับ HOPE</a>
+      {{if .Advanced}}<a class="mode-link" href="/knowledge">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/knowledge?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
       <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRFToken}}"><button class="quiet" type="submit">ออกจากระบบ · {{.AgentID}}</button></form>
     </div>
   </header>
@@ -249,7 +250,7 @@
             <option value="high" {{if .Advisor.EffortHigh}}selected{{end}}>สูง · ใช้เมื่อสำคัญจริง</option>
           </select></label>
           <div class="advisor-settings-actions">
-            <a class="quiet-link" href="/?refresh_models=1#advisor-settings">โหลดรายการโมเดลปัจจุบัน</a>
+            <a class="quiet-link" href="/knowledge?refresh_models=1#advisor-settings">โหลดรายการโมเดลปัจจุบัน</a>
             <button type="submit">บันทึกการตั้งค่า</button>
           </div>
         </form>
@@ -269,12 +270,12 @@
           <p class="eyebrow">จัดกลุ่มให้ก่อน · ไม่อนุมัติเอง</p>
           <h2 id="candidate-inbox-title">กล่องตรวจความรู้เก่า</h2>
         </div>
-        <a class="quiet-link" href="/?lifecycle=candidate{{if .Advanced}}&view=advanced{{end}}#candidate-inbox">ดูรายการรอตรวจทั้งหมด</a>
+        <a class="quiet-link" href="/knowledge?lifecycle=candidate{{if .Advanced}}&view=advanced{{end}}#candidate-inbox">ดูรายการรอตรวจทั้งหมด</a>
       </div>
       <p class="muted">Cortex ใช้กฎเบา ๆ แยกข้อมูลนำเข้าตามจุดประสงค์ พี่จึงเลือกตรวจและจัดการเป็นชุดได้โดยไม่เสีย token</p>
       <div class="candidate-groups">
         {{range .CandidateGroups}}
-        <a class="candidate-group {{if .Active}}candidate-group-active{{end}}" href="/?lifecycle=candidate&candidate_group={{.Key}}{{if $.Advanced}}&view=advanced{{end}}#candidate-inbox">
+        <a class="candidate-group {{if .Active}}candidate-group-active{{end}}" href="/knowledge?lifecycle=candidate&candidate_group={{.Key}}{{if $.Advanced}}&view=advanced{{end}}#candidate-inbox">
           <span class="candidate-group-count">{{.Count}}</span>
           <strong>{{.Label}}</strong>
           <span>{{.Description}}</span>
@@ -289,7 +290,7 @@
       <div><p class="eyebrow">สมองที่สองที่ตรวจสอบย้อนหลังได้</p><h2>คลังความรู้</h2></div>
       <p class="muted">พบ {{.Matched}} รายการ · ความน่าเชื่อถือและประโยชน์ถูกติดตามแยกกัน</p>
     </section>
-    <form class="explorer" method="get" action="/" aria-label="ค้นหาและกรองความรู้">
+    <form class="explorer" method="get" action="/knowledge" aria-label="ค้นหาและกรองความรู้">
       {{if .Advanced}}<input type="hidden" name="view" value="advanced">{{end}}
       <label class="search-field"><span>ค้นหา</span><input type="search" name="q" value="{{.Filters.Text}}" placeholder="ข้อตัดสินใจ บทเรียน ปัญหา หรือชื่อโปรเจกต์"></label>
       <label><span>สถานะ</span><select name="lifecycle">
@@ -321,7 +322,7 @@
       <label><span>Project / domain key</span><input name="scope_key" value="{{.Filters.ScopeKey}}" placeholder="novelclaw หรือ coding"></label>
       <label><span>ผู้บันทึก</span><input name="created_by" value="{{.Filters.CreatedBy}}" placeholder="sola"></label>
       {{end}}
-      <div class="explorer-actions"><button type="submit">ค้นหา</button><a class="quiet-link" href="/{{if .Advanced}}?view=advanced{{end}}">ล้างตัวกรอง</a></div>
+      <div class="explorer-actions"><button type="submit">ค้นหา</button><a class="quiet-link" href="/knowledge{{if .Advanced}}?view=advanced{{end}}">ล้างตัวกรอง</a></div>
     </form>
 
     {{if .BatchNotice}}<p class="notice" role="status">{{.BatchNotice}}</p>{{end}}

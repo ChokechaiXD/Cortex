@@ -292,7 +292,7 @@ func TestDashboardConfiguresAndRunsOptionalAdvisor(t *testing.T) {
 	settingsRequest.AddCookie(cookie)
 	settingsResponse := httptest.NewRecorder()
 	handler.ServeHTTP(settingsResponse, settingsRequest)
-	if settingsResponse.Code != http.StatusSeeOther || advisor.modelCalls != 1 {
+	if settingsResponse.Code != http.StatusSeeOther || advisor.modelCalls != 0 {
 		t.Fatalf("advisor settings status=%d model_calls=%d body=%s",
 			settingsResponse.Code, advisor.modelCalls, settingsResponse.Body.String())
 	}

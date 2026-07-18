@@ -67,8 +67,14 @@ type dashboardSystem struct {
 
 func (server *Server) dashboard(writer http.ResponseWriter, request *http.Request) {
 	setDashboardHeaders(writer)
-	_, session, ok := server.sessions.fromRequest(request)
+	session, ok := server.dashboardSession(writer, request)
 	if !ok {
+		if access, supported := server.auth.(dashboardAccess); supported {
+			_, passwordless := access.DashboardAccess()
+			if passwordless && isLoopbackRequest(request) {
+				return
+			}
+		}
 		writer.Header().Set("Cache-Control", "no-store")
 		if err := dashboardTemplates.ExecuteTemplate(writer, "login.html", nil); err != nil {
 			http.Error(writer, "render login", http.StatusInternalServerError)

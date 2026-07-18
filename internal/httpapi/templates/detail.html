@@ -11,7 +11,7 @@
     <div><p class="eyebrow">ตรวจความรู้ก่อนนำไปใช้</p><h1>Cortex</h1></div>
     <div class="topbar-actions">
       {{if .Advanced}}<a class="mode-link" href="/ui/memories/{{.Memory.ID}}">มุมมองทั่วไป</a>{{else}}<a class="mode-link" href="/ui/memories/{{.Memory.ID}}?view=advanced">รายละเอียดขั้นสูง</a>{{end}}
-      <a class="back-link" href="/{{if .Advanced}}?view=advanced{{end}}">← กลับคลังความรู้</a>
+      <a class="back-link" href="/knowledge{{if .Advanced}}?view=advanced{{end}}">← กลับคลังความรู้</a>
     </div>
   </header>
   <main>

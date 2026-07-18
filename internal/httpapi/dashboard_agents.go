@@ -82,5 +82,5 @@ func (server *Server) hermesSettings(writer http.ResponseWriter, request *http.R
 		http.Error(writer, "save Hermes settings: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(writer, request, "/?agents=saved#agent-settings", http.StatusSeeOther)
+	http.Redirect(writer, request, "/knowledge?agents=saved#agent-settings", http.StatusSeeOther)
 }

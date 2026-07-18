@@ -104,7 +104,7 @@ func (server *Server) curatorSettings(writer http.ResponseWriter, request *http.
 		writeDomainError(writer, err)
 		return
 	}
-	http.Redirect(writer, request, "/?curator=settings", http.StatusSeeOther)
+	http.Redirect(writer, request, "/knowledge?curator=settings", http.StatusSeeOther)
 }
 
 func (server *Server) curatorRun(writer http.ResponseWriter, request *http.Request) {
@@ -120,7 +120,7 @@ func (server *Server) curatorRun(writer http.ResponseWriter, request *http.Reque
 		writeDomainError(writer, err)
 		return
 	}
-	http.Redirect(writer, request, "/?curator=ran", http.StatusSeeOther)
+	http.Redirect(writer, request, "/knowledge?curator=ran", http.StatusSeeOther)
 }
 
 func (server *Server) curatorDashboardRequest(

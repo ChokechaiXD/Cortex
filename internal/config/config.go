@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	FileName     = "config.json"
-	DatabaseName = "cortex.db"
-	fileVersion  = 1
+	FileName         = "config.json"
+	DatabaseName     = "cortex.db"
+	HopeDatabaseName = "hope.db"
+	fileVersion      = 1
 )
 
 var (
@@ -67,6 +68,16 @@ func (auth *ReloadingAuthenticator) AuthenticateDashboard(secret string) (string
 	auth.mu.RLock()
 	defer auth.mu.RUnlock()
 	return auth.current.AuthenticateDashboard(secret)
+}
+
+func (auth *ReloadingAuthenticator) DashboardAccess() (string, bool) {
+	auth.reload()
+	auth.mu.RLock()
+	defer auth.mu.RUnlock()
+	if len(auth.current.AdminAgents) == 0 {
+		return "", false
+	}
+	return auth.current.AdminAgents[0], auth.current.DashboardPINHash == ""
 }
 
 func (auth *ReloadingAuthenticator) reload() {
@@ -186,6 +197,15 @@ func SetDashboardPIN(dataDir, pin string) error {
 	return writeAtomic(filepath.Join(dataDir, FileName), config)
 }
 
+func ClearDashboardPIN(dataDir string) error {
+	config, err := Load(dataDir)
+	if err != nil {
+		return err
+	}
+	config.DashboardPINHash = ""
+	return writeAtomic(filepath.Join(dataDir, FileName), config)
+}
+
 func (config File) Authenticate(token string) (string, bool) {
 	hash := tokenHash(token)
 	for _, credential := range config.Credentials {
@@ -217,6 +237,14 @@ func (config File) HasAgent(agentID string) bool {
 
 func DatabasePath(dataDir string) string {
 	return filepath.Join(dataDir, DatabaseName)
+}
+
+func HopeDatabasePath(dataDir string) string {
+	return filepath.Join(dataDir, HopeDatabaseName)
+}
+
+func HopeSkillsDir(dataDir string) string {
+	return filepath.Join(dataDir, "hope", "skills")
 }
 
 func DefaultDataDir() string {

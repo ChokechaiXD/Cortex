@@ -1,21 +1,22 @@
-# Cortex architecture
+# HOPE and Cortex architecture
 
 ## Boundary
 
-Cortex is the memory owner. Hermes, future agents, dashboards, and importers are
-clients of a stable protocol. The core never imports an agent framework.
+Cortex is the memory owner. HOPE is a separate control plane composed beside it.
+Hermes, future agents, dashboards, and importers are clients of stable
+interfaces. The memory core never imports an agent framework or control adapter.
 
 ```text
-Hermes / future agents
-        │ connector
-        ▼
-HTTP v1 + token identity
-        │
-        ▼
-Remember · Recall · Feedback · Review · History
-        │
-        ▼
-SQLite WAL + FTS5 + append-only events
+Hermes / future agents ── connector ──► HTTP v1 + token identity
+                                            │
+                                            ▼
+                              Cortex kernel (`cortex.db`)
+
+Human ── browser ──► HOPE dashboard ──► control modules (`hope.db`)
+                         │
+                         ├── Hermes CLI adapter
+                         ├── 9Router adapter
+                         └── Telegram link adapter
 ```
 
 ## Module map
@@ -26,13 +27,22 @@ connectors/hermes/               embedded, replaceable Hermes adapter
 internal/autostart/              Windows user-level startup adapter
 internal/config/                 local config and hashed agent credentials
 internal/controlcenter/          serialized local runtime and connector controls
+internal/controlplane/           HOPE application facade and UI-facing use cases
 internal/cortex/                 memory domain and deep-module interface
+internal/hope/                   HOPE schema, catalogs, routing evidence, process ledger
 internal/hermes/                 connector discovery, install, activation
+internal/hermesruntime/          narrow official Hermes CLI client
 internal/httpapi/                HTTP translation and management dashboard
+internal/integrationhub/         adapter registry, per-target locks, action audit
+internal/integrations/           Hermes, 9Router, and Telegram adapters
 internal/intelligence/           optional loopback model-advisor adapter
 internal/importer/holographic/   read-only legacy adapter
 internal/launcher/               validated Windows dashboard opener
 internal/localauth/              HMAC launcher proof and one-time UI codes
+internal/projectcenter/           bounded project discovery and Windows folder opening
+internal/skillcenter/             HOPE skill files, Hermes discovery, atomic deployment
+internal/workmodes/               reversible multi-system start/stop orchestration
+internal/automations/             Hermes cron visibility and explicit controls
 docs/                            product and architecture contracts
 ```
 
@@ -43,6 +53,8 @@ CLI commands are split by identity, integration, process, and autostart seams;
 
 ## Storage model
 
+### Cortex memory kernel
+
 - `memories` holds identity, scope, lifecycle, current revision, and scores.
 - `memory_revisions` holds immutable content revisions.
 - `memory_events` is the append-only usage and governance ledger.
@@ -50,6 +62,16 @@ CLI commands are split by identity, integration, process, and autostart seams;
 - `recalls` and `recall_items` make tracked recalls durable and idempotent.
 - `requests` maps idempotency keys to resources.
 - `PRAGMA user_version` drives ordered schema migrations.
+
+### HOPE control plane
+
+- `agents` and `work_modes` hold no-code runtime composition.
+- `projects` and `project_roots` hold references only.
+- `skills` and `skill_fts` index skill metadata, not full prompt bodies.
+- `context_packs`, `context_pack_skills`, and `skill_feedback_events` make
+  recommendations and their outcomes inspectable and idempotent.
+- `managed_processes` proves which external processes HOPE may stop.
+- `action_events` is the human-facing control ledger.
 
 The database is opened with foreign keys, WAL, one writer connection, and a
 busy timeout. A binary refuses to open a database whose schema version is newer
@@ -76,6 +98,14 @@ than it understands.
     codes expire after 30 seconds and cannot be replayed.
 15. A batch review validates every selected transition before one transaction
     mutates any memory; one invalid transition leaves the entire batch unchanged.
+16. HOPE and Cortex use different databases and migrations.
+17. HOPE never stops an external process without matching ownership evidence.
+18. A Context Pack records only skill metadata and outcome; skill bodies remain
+    lazy-loaded by Hermes.
+19. The optional AI tie-breaker may reorder supplied IDs only. Deterministic
+    routing remains the fallback and source of candidates.
+20. Passwordless dashboard access is accepted only from a loopback remote
+    address; agent APIs always require bearer-token identity.
 
 ## Evolution points
 

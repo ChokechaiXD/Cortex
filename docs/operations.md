@@ -1,4 +1,4 @@
-# Cortex operations
+# HOPE operations
 
 ## Installed layout
 
@@ -7,7 +7,10 @@
 ├── bin\cortex.exe
 ├── config.json
 ├── cortex.db
+├── hope.db
+├── hope\skills\
 ├── launcher.key
+├── logs\9router.log
 └── backups\
 ```
 
@@ -18,7 +21,7 @@ administrator permission is not required.
 
 ## Daily use
 
-Open **Cortex Dashboard** from the Windows Start Menu. The shortcut checks
+Open **HOPE Dashboard** from the Windows Start Menu. The shortcut checks
 `/v1/health`, starts the installed service only when needed, and opens the
 configured loopback URL with a 30-second, one-time local session. It does not
 place an agent bearer token in the browser or command output. Use the dashboard
@@ -27,9 +30,19 @@ domain routing and token budgets, Hermes-agent discovery, restart, and graceful
 stop. Selected-memory bulk decisions are atomic: an invalid item rolls back the
 whole selection.
 
-Alternatively, double-click `Start Cortex.bat` from the Cortex folder. It uses
+Alternatively, double-click `Start HOPE.bat` from the repository. It uses
 the same installed executable and health-aware `open` command as the Start Menu
 shortcut.
+
+For a first local installation, double-click `Install HOPE.bat`. It initializes
+only missing Cortex data, disables the optional browser PIN, syncs Hermes when
+present, installs user-level autostart, starts HOPE, and opens the browser. It
+does not start 9Router or Hermes gateways automatically.
+
+The **Today** page owns daily startup. A Work Mode starts only its selected
+integrations and agent profiles. Existing healthy services are reused. The stop
+button acts only on processes opened by HOPE whose PID and creation time still
+match the ownership ledger.
 
 The commands below remain operator diagnostics, not daily requirements:
 
@@ -51,12 +64,30 @@ bin\cortex.exe agent token --id mika
 
 Only the printed token is sensitive. Cortex persists its SHA-256 hash.
 
-For a simpler direct-browser fallback, set a 4–8 digit dashboard-only PIN. It
-is stored as a hash and is deliberately rejected by every agent API endpoint:
+Direct loopback access is passwordless by default. To enable a 4–8 digit
+dashboard-only PIN, use Settings or the fallback command below. It is stored as
+a hash and is deliberately rejected by every agent API endpoint:
 
 ```powershell
 bin\cortex.exe dashboard pin --value 4826
 ```
+
+Disable it again with `bin\cortex.exe dashboard pin --off`. Either setting
+affects the browser only; agent API tokens remain mandatory and hashed at rest.
+
+## Agent, project, skill, and automation operations
+
+- **Agent Center** starts or stops individual Hermes profiles, opens configured
+  Telegram URLs, and can create a profile before connector sync.
+- **Project Center** scans only configured roots to depth three, skips dependency
+  and build folders, and stores references instead of repository contents.
+- **Skill Center** scans metadata on demand. HOPE skills are editable sources;
+  Hermes skills are read-only. Deployment writes an atomic copy plus a HOPE
+  manifest into the Hermes shared skill directory.
+- **Automations** reads `hermes cron list` and exposes explicit run, pause, and
+  resume actions. Hermes remains the scheduler.
+- **Connections** shows external, HOPE-managed, stopped, missing, degraded, and
+  port-conflict states without copying another product's settings UI.
 
 ## Add or refresh Hermes profiles
 

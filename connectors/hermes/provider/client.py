@@ -34,12 +34,34 @@ class CortexClient:
     def recall(self, payload: dict[str, Any], idempotency_key: str = "") -> dict[str, Any]:
         return self._request("POST", "/v1/recalls", payload, idempotency_key or _request_id("recall"))
 
+    def context_pack(self, payload: dict[str, Any], idempotency_key: str = "") -> dict[str, Any]:
+        return self._request(
+            "POST",
+            "/v1/context-packs",
+            payload,
+            idempotency_key or _request_id("context-pack"),
+        )
+
     def feedback(self, memory_id: str, payload: dict[str, Any], idempotency_key: str = "") -> dict[str, Any]:
         return self._request(
             "POST",
             f"/v1/memories/{memory_id}/feedback",
             payload,
             idempotency_key or _request_id("feedback"),
+        )
+
+    def skill_feedback(
+        self,
+        context_pack_id: str,
+        skill_id: str,
+        payload: dict[str, Any],
+        idempotency_key: str = "",
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/v1/context-packs/{context_pack_id}/skills/{skill_id}/feedback",
+            payload,
+            idempotency_key or _request_id("skill-feedback"),
         )
 
     def review(self, memory_id: str, payload: dict[str, Any], idempotency_key: str = "") -> dict[str, Any]:

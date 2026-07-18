@@ -1,10 +1,46 @@
 package httpapi
 
 import (
+	"net"
 	"net/http"
 	"strings"
 	"time"
 )
+
+type dashboardAccess interface {
+	DashboardAccess() (agentID string, passwordless bool)
+}
+
+func (server *Server) dashboardSession(
+	writer http.ResponseWriter,
+	request *http.Request,
+) (dashboardSession, bool) {
+	_, session, ok := server.sessions.fromRequest(request)
+	if ok {
+		return session, true
+	}
+	access, supported := server.auth.(dashboardAccess)
+	if !supported || !isLoopbackRequest(request) {
+		return dashboardSession{}, false
+	}
+	agentID, passwordless := access.DashboardAccess()
+	if !passwordless || agentID == "" {
+		return dashboardSession{}, false
+	}
+	if err := server.establishDashboardSessionAt(writer, request, agentID, request.URL.RequestURI()); err != nil {
+		http.Error(writer, "create local session", http.StatusInternalServerError)
+	}
+	return dashboardSession{}, false
+}
+
+func isLoopbackRequest(request *http.Request) bool {
+	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err != nil {
+		host = request.RemoteAddr
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && ip.IsLoopback()
+}
 
 func (server *Server) login(writer http.ResponseWriter, request *http.Request) {
 	request.Body = http.MaxBytesReader(writer, request.Body, 4096)
@@ -28,6 +64,15 @@ func (server *Server) establishDashboardSession(
 	request *http.Request,
 	agentID string,
 ) error {
+	return server.establishDashboardSessionAt(writer, request, agentID, "/")
+}
+
+func (server *Server) establishDashboardSessionAt(
+	writer http.ResponseWriter,
+	request *http.Request,
+	agentID string,
+	target string,
+) error {
 	sessionID, session, err := server.sessions.create(agentID)
 	if err != nil {
 		return err
@@ -41,7 +86,10 @@ func (server *Server) establishDashboardSession(
 		Expires:  session.ExpiresAt,
 		MaxAge:   int(dashboardSessionTTL / time.Second),
 	})
-	http.Redirect(writer, request, "/", http.StatusSeeOther)
+	if !strings.HasPrefix(target, "/") || strings.HasPrefix(target, "//") {
+		target = "/"
+	}
+	http.Redirect(writer, request, target, http.StatusSeeOther)
 	return nil
 }
 

@@ -65,18 +65,20 @@ RECALL_SCHEMA = {
 
 FEEDBACK_SCHEMA = {
     "name": "cortex_feedback",
-    "description": "Report whether a recalled memory was true, useful, or harmful.",
+    "description": "Report a memory result, or whether a HOPE-recommended skill was used successfully.",
     "parameters": {
         "type": "object",
         "properties": {
             "memory_id": {"type": "string"},
+            "context_pack_id": {"type": "string"},
+            "skill_id": {"type": "string"},
             "outcome": {
                 "type": "string",
-                "enum": ["confirmed", "contradicted", "helpful", "unhelpful", "applied"],
+                "enum": ["confirmed", "contradicted", "helpful", "unhelpful", "applied", "used", "success", "failure"],
             },
             "reason": {"type": "string"},
         },
-        "required": ["memory_id", "outcome"],
+        "required": ["outcome"],
     },
 }
 
@@ -194,13 +196,16 @@ class CortexMemoryProvider(MemoryProvider):
         if not self._client:
             return ""
         return (
-            "# Cortex Shared Memory\n"
+            "# HOPE Context Bridge · Cortex Shared Memory\n"
             "Use cortex_recall before repeating prior project work. Store verified lessons, decisions, "
             "failed attempts, and solutions with cortex_remember. New records are candidates; do not "
             "treat them as shared truth until reviewed. Report outcomes with cortex_feedback. "
             "Only when a durable tested lesson emerges, append at most one short visible section headed "
             "บทเรียนที่ควรจำ:, วิธีที่ไม่ควรทำซ้ำ:, Working solution:, or Decision to remember:. "
-            "Do not add it on routine turns. Cortex captures only that marked section as a candidate."
+            "Do not add it on routine turns. Cortex captures only that marked section as a candidate. "
+            "When HOPE recommends a skill, call skill_view for that exact skill before acting; do not load "
+            "unrelated skills. Treat recommendations as routing advice, not as proof. After using one, call "
+            "cortex_feedback with its context_pack_id, skill_id, and used/success/failure outcome."
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
@@ -210,17 +215,26 @@ class CortexMemoryProvider(MemoryProvider):
             "text": query,
             "project": self._config.get("default_project", ""),
             "domain": self._config.get("default_domain", ""),
+            "session_id": session_id or self._session_id,
             "limit": _bounded_int(self._config.get("prefetch_limit"), 5, 1, 20),
             "token_budget": _bounded_int(
                 self._config.get("prefetch_token_budget"), 700, 100, 4000
             ),
         }
+        recall_payload = dict(payload)
         try:
-            result = self._client.recall(payload)
+            payload["memory_limit"] = payload.pop("limit")
+            payload["memory_token_budget"] = payload.pop("token_budget")
+            payload["skill_limit"] = _bounded_int(self._config.get("skill_route_limit"), 3, 1, 5)
+            result = self._client.context_pack(payload)
         except CortexError as exc:
-            logger.debug("Cortex prefetch failed: %s", exc)
-            return ""
-        return _format_recall(result)
+            logger.debug("HOPE context pack failed, falling back to Cortex recall: %s", exc)
+            try:
+                return _format_recall(self._client.recall(recall_payload))
+            except CortexError as recall_exc:
+                logger.debug("Cortex prefetch failed: %s", recall_exc)
+                return ""
+        return _format_context_pack(result)
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages=None) -> None:
         if not self._capture_enabled:
@@ -293,7 +307,19 @@ class CortexMemoryProvider(MemoryProvider):
                 }
                 return json.dumps(self._client.recall(payload), ensure_ascii=False)
             if tool_name == "cortex_feedback":
+                context_pack_id = str(args.get("context_pack_id") or "").strip()
+                skill_id = str(args.get("skill_id") or "").strip()
+                if context_pack_id or skill_id:
+                    if not context_pack_id or not skill_id:
+                        raise ValueError("context_pack_id and skill_id are both required for skill feedback")
+                    payload = {"outcome": args.get("outcome")}
+                    return json.dumps(
+                        self._client.skill_feedback(context_pack_id, skill_id, payload),
+                        ensure_ascii=False,
+                    )
                 memory_id = str(args.get("memory_id") or "").strip()
+                if not memory_id:
+                    raise ValueError("memory_id is required for memory feedback")
                 payload = {"outcome": args.get("outcome"), "reason": args.get("reason", ""), "session_id": self._session_id}
                 return json.dumps(self._client.feedback(memory_id, payload), ensure_ascii=False)
             if tool_name == "cortex_review":
@@ -356,6 +382,26 @@ def _format_recall(result: dict[str, Any]) -> str:
             suffix += ", trimmed"
         heading += f" ({suffix})"
     return heading + "\n" + "\n".join(lines)
+
+
+def _format_context_pack(result: dict[str, Any]) -> str:
+    sections = []
+    memory = result.get("memory") or {}
+    recalled = _format_recall(memory)
+    if recalled:
+        sections.append(recalled)
+    skills = result.get("skills") or []
+    if skills:
+        pack_id = str(result.get("id") or "")
+        lines = [f"## HOPE Skill Routes (context_pack_id={pack_id})"]
+        for skill in skills[:5]:
+            lines.append(
+                f"- `{skill.get('id', '')}` — {skill.get('description', '')} "
+                f"(why: {skill.get('reason', '')})"
+            )
+        lines.append("Open only the selected skill with skill_view before using it.")
+        sections.append("\n".join(lines))
+    return "\n\n".join(sections)
 
 
 def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:

@@ -1,7 +1,8 @@
-# Cortex connector for Hermes
+# HOPE Context Bridge for Hermes
 
 This adapter translates Hermes memory lifecycle calls and tools to the Cortex
-v1 HTTP protocol. Cortex remains a separate process and data owner.
+v1 HTTP protocol. Cortex remains the memory data owner and HOPE remains a
+separate control plane; Hermes continues to own inference and tool execution.
 
 Install and configure all profiles with:
 
@@ -19,6 +20,13 @@ candidates every five turns or at session end. Without `default_project`, they
 stay private to the originating agent. Configure a project to share reviewed
 lessons with other agents working in that project.
 
+Before a turn, the provider requests one Context Pack. It contains a
+token-budgeted Cortex recall plus up to five HOPE skill metadata recommendations.
+Hermes still opens the selected skill body through its native `skill_view` tool.
+The existing `cortex_feedback` tool accepts either memory feedback or a
+`context_pack_id` + `skill_id` with `used`, `success`, or `failure`. This keeps
+skill routing history inspectable without adding another tool schema.
+
 Optional connector settings:
 
 ```json
@@ -27,6 +35,7 @@ Optional connector settings:
   "default_domain": "coding",
   "auto_capture_enabled": true,
   "auto_capture_every_turns": 5,
-  "auto_capture_max_chars": 1000
+  "auto_capture_max_chars": 1000,
+  "skill_route_limit": 3
 }
 ```

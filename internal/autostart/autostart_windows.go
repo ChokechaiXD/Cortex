@@ -17,10 +17,11 @@ import (
 )
 
 const (
+	// Keep the existing registry value name so upgrades never create a second startup entry.
 	EntryName    = "Cortex Memory Hub"
-	ShortcutName = "Cortex Dashboard.lnk"
+	ShortcutName = "HOPE Dashboard.lnk"
 	RunKey       = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
-	shortcutTemp = "Cortex Dashboard.new.lnk"
+	shortcutTemp = "HOPE Dashboard.new.lnk"
 )
 
 type InstallResult struct {
@@ -120,6 +121,8 @@ func shortcutInstallScript(executable, dataDir string) string {
 	arguments := "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand " + encodePowerShell(dashboardScript)
 	return strings.Join([]string{
 		"$programs=[Environment]::GetFolderPath('Programs')",
+		"$legacy=Join-Path $programs 'Cortex Dashboard.lnk'",
+		"Remove-Item -LiteralPath $legacy -Force -ErrorAction SilentlyContinue",
 		"$link=Join-Path $programs " + powerShellLiteral(ShortcutName),
 		"$temp=Join-Path $programs " + powerShellLiteral(shortcutTemp),
 		"$shell=New-Object -ComObject WScript.Shell",
@@ -127,7 +130,7 @@ func shortcutInstallScript(executable, dataDir string) string {
 		"$shortcut.TargetPath=(Get-Command powershell.exe).Source",
 		"$shortcut.Arguments=" + powerShellLiteral(arguments),
 		"$shortcut.WorkingDirectory=" + powerShellLiteral(dataDir),
-		"$shortcut.Description='Open Cortex Dashboard'",
+		"$shortcut.Description='Open HOPE Agent Hub'",
 		"$shortcut.IconLocation=" + powerShellLiteral(executable+",0"),
 		"$shortcut.WindowStyle=7",
 		"$shortcut.Save()",
@@ -140,6 +143,8 @@ func shortcutRemoveScript() string {
 		"$programs=[Environment]::GetFolderPath('Programs')",
 		"$link=Join-Path $programs " + powerShellLiteral(ShortcutName),
 		"Remove-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue",
+		"$legacy=Join-Path $programs 'Cortex Dashboard.lnk'",
+		"Remove-Item -LiteralPath $legacy -Force -ErrorAction SilentlyContinue",
 	}, ";")
 }
 

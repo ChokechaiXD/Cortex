@@ -44,5 +44,5 @@ func (server *Server) dashboardReviewBatch(writer http.ResponseWriter, request *
 		writeDomainError(writer, err)
 		return
 	}
-	http.Redirect(writer, request, "/?lifecycle=candidate&batch=reviewed", http.StatusSeeOther)
+	http.Redirect(writer, request, "/knowledge?lifecycle=candidate&batch=reviewed", http.StatusSeeOther)
 }
